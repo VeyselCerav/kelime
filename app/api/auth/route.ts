@@ -1,22 +1,16 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { verifyPassword } from '@/lib/crypto';
+import { createHash } from 'crypto';
 
-export const runtime = 'edge';
-
-// Sabit kullanıcı bilgileri
-const ADMIN_USER = {
-  username: 'semihsacli',
-  password: 'Mayıs2025***'
-};
+function hashPassword(password: string): string {
+  return createHash('sha256').update(password).digest('base64');
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { username, password } = body;
-
-    console.log('Giriş denemesi:', { username }); // Debug log
 
     if (!username || !password) {
       return NextResponse.json(
@@ -36,7 +30,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const passwordMatch = await verifyPassword(password, user.password);
+    const hashedInputPassword = hashPassword(password);
+    const passwordMatch = hashedInputPassword === user.password;
 
     if (!passwordMatch) {
       return NextResponse.json(
