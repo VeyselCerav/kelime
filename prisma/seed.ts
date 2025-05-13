@@ -3,14 +3,22 @@ const { createHash } = require('crypto');
 
 const prisma = new PrismaClient();
 
-function hashPassword(password) {
-  return createHash('sha256').update(password).digest('base64');
+function hashPassword(password: string): string {
+  const hashed = createHash('sha256').update(password).digest('base64');
+  console.log('Creating user with hashed password:', hashed);
+  return hashed;
 }
 
 async function main() {
-  const hashedPassword = hashPassword('Mayıs2025***');
+  const password = 'Mayıs2025***';
+  console.log('Seeding database with user:', {
+    username: 'semihsacli',
+    password: password
+  });
+
+  const hashedPassword = hashPassword(password);
   
-  await prisma.user.upsert({
+  const user = await prisma.user.upsert({
     where: { username: 'semihsacli' },
     update: {},
     create: {
@@ -18,11 +26,13 @@ async function main() {
       password: hashedPassword,
     },
   });
+
+  console.log('User created/updated:', user);
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('Seed error:', e);
     process.exit(1);
   })
   .finally(async () => {
