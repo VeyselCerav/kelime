@@ -3,10 +3,20 @@ import { cookies } from 'next/headers';
 import * as bcrypt from 'bcrypt';
 import { prisma } from '@/lib/prisma';
 
+export const runtime = 'edge';
+
+// Sabit kullanıcı bilgileri
+const ADMIN_USER = {
+  username: 'semihsacli',
+  password: 'Mayıs2025***'
+};
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { username, password } = body;
+
+    console.log('Giriş denemesi:', { username }); // Debug log
 
     if (!username || !password) {
       return NextResponse.json(

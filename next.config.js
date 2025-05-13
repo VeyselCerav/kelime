@@ -11,6 +11,10 @@ const nextConfig = {
   reactStrictMode: true,
   compress: true,
   optimizeFonts: true,
+  output: 'standalone',
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'bcrypt']
+  }
 }
 
 module.exports = nextConfig 
