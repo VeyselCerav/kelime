@@ -9,11 +9,17 @@ export default function Login() {
     password: ''
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
     try {
+      console.log('Giriş denemesi başlatılıyor...');
+      
       const response = await fetch('/api/auth', {
         method: 'POST',
         headers: {
@@ -22,19 +28,36 @@ export default function Login() {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      console.log('API yanıtı alındı:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
+      let data;
+      try {
+        data = await response.json();
+        console.log('API yanıt verisi:', data);
+      } catch (jsonError) {
+        console.error('JSON parse hatası:', jsonError);
+        throw new Error('Sunucu yanıtı geçersiz format içeriyor');
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Giriş yapılırken bir hata oluştu');
       }
 
+      console.log('Giriş başarılı, yönlendirme yapılıyor...');
       router.push('/admin');
     } catch (error) {
+      console.error('Giriş hatası:', error);
       if (error instanceof Error) {
         setError(error.message);
       } else {
         setError('Giriş yapılırken bir hata oluştu');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -66,6 +89,7 @@ export default function Login() {
                   onChange={handleChange}
                   className="input bg-white border-2 border-base-300 focus:border-primary/30 w-full rounded-xl"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -80,6 +104,7 @@ export default function Login() {
                   onChange={handleChange}
                   className="input bg-white border-2 border-base-300 focus:border-primary/30 w-full rounded-xl"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -91,9 +116,10 @@ export default function Login() {
 
               <button 
                 type="submit" 
-                className="btn bg-white text-primary hover:bg-primary/5 border-2 border-primary/20 rounded-xl w-full hover:shadow-lg transition-all"
+                className={`btn bg-white text-primary hover:bg-primary/5 border-2 border-primary/20 rounded-xl w-full hover:shadow-lg transition-all ${isLoading ? 'loading' : ''}`}
+                disabled={isLoading}
               >
-                Giriş Yap
+                {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
               </button>
             </form>
           </div>
