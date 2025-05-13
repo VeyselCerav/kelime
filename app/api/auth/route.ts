@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import * as bcrypt from 'bcrypt';
 import { prisma } from '@/lib/prisma';
+import { verifyPassword } from '@/lib/crypto';
 
 export const runtime = 'edge';
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = await verifyPassword(password, user.password);
 
     if (!passwordMatch) {
       return NextResponse.json(
