@@ -6,6 +6,7 @@ interface TimeLeft {
   days: number;
   hours: number;
   minutes: number;
+  seconds: number;
 }
 
 export default function Countdown() {
@@ -18,26 +19,35 @@ export default function Countdown() {
       return {
         days: Math.floor(difference / (1000 * 60 * 60 * 24)),
         hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
+        minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((difference % (1000 * 60)) / 1000)
       };
     }
 
     return {
       days: 0,
       hours: 0,
-      minutes: 0
+      minutes: 0,
+      seconds: 0
     };
   };
 
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTimeLeft());
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const timer = setInterval(() => {
       setTimeLeft(calculateTimeLeft());
-    }, 1000 * 60); // Her dakika güncelle
+    }, 1000); // Her saniye güncelle
 
     return () => clearInterval(timer);
   }, []);
+
+  // Hydration hatalarını önlemek için
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-6 px-4 bg-white border-2 border-primary/10 rounded-2xl shadow-lg hover:shadow-xl transition-all">
@@ -45,26 +55,33 @@ export default function Countdown() {
         Kasım 2025 YDS'ye Kalan Süre
       </h2>
       
-      <div className="flex gap-8">
+      <div className="flex gap-4 md:gap-8">
         <div className="flex flex-col items-center">
-          <div className="text-5xl font-bold text-red-600">
+          <div className="text-4xl md:text-5xl font-bold text-red-600">
             {timeLeft.days}
           </div>
-          <div className="text-xl text-base-content/70 mt-2">Gün</div>
+          <div className="text-lg md:text-xl text-base-content/70 mt-2">Gün</div>
         </div>
 
         <div className="flex flex-col items-center">
-          <div className="text-5xl font-bold text-red-600">
-            {timeLeft.hours}
+          <div className="text-4xl md:text-5xl font-bold text-red-600">
+            {timeLeft.hours.toString().padStart(2, '0')}
           </div>
-          <div className="text-xl text-base-content/70 mt-2">Saat</div>
+          <div className="text-lg md:text-xl text-base-content/70 mt-2">Saat</div>
         </div>
 
         <div className="flex flex-col items-center">
-          <div className="text-5xl font-bold text-red-600">
-            {timeLeft.minutes}
+          <div className="text-4xl md:text-5xl font-bold text-red-600">
+            {timeLeft.minutes.toString().padStart(2, '0')}
           </div>
-          <div className="text-xl text-base-content/70 mt-2">Dakika</div>
+          <div className="text-lg md:text-xl text-base-content/70 mt-2">Dakika</div>
+        </div>
+
+        <div className="flex flex-col items-center">
+          <div className="text-4xl md:text-5xl font-bold text-red-600">
+            {timeLeft.seconds.toString().padStart(2, '0')}
+          </div>
+          <div className="text-lg md:text-xl text-base-content/70 mt-2">Saniye</div>
         </div>
       </div>
 
