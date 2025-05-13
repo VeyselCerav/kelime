@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useWeek } from '../context/WeekContext';
@@ -8,21 +8,9 @@ import { useWeek } from '../context/WeekContext';
 export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const { selectedWeek, setSelectedWeek, totalWeeks } = useWeek();
 
   const isActive = (path: string) => pathname === path;
-
-  // Ekran boyutunu takip et
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Menüyü kapat (geçiş animasyonlu)
   const closeMenu = () => {
