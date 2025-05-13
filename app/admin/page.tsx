@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeek } from '../context/WeekContext';
 
@@ -21,17 +21,14 @@ export default function Admin() {
   });
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { refreshWeeks } = useWeek();
 
-  useEffect(() => {
-    checkAuth();
-    fetchWords();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const response = await fetch('/api/auth');
+      if (!response.ok) throw new Error('Auth check failed');
       const data = await response.json();
 
       if (!data.isLoggedIn) {
@@ -41,20 +38,31 @@ export default function Admin() {
       console.error('Yetkilendirme kontrolü yapılırken hata oluştu:', error);
       router.push('/login');
     }
-  };
+  }, [router]);
 
-  const fetchWords = async () => {
+  const fetchWords = useCallback(async () => {
     try {
       const response = await fetch('/api/words');
+      if (!response.ok) throw new Error('Failed to fetch words');
       const data = await response.json();
       setWords(data);
     } catch (error) {
       console.error('Kelimeler yüklenirken hata oluştu:', error);
+      setMessage('Kelimeler yüklenirken hata oluştu');
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+    fetchWords();
+  }, [checkAuth, fetchWords]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       const response = await fetch('/api/words', {
         method: 'POST',
@@ -68,15 +76,18 @@ export default function Admin() {
         throw new Error('Kelime eklenirken bir hata oluştu');
       }
 
-      const data = await response.json();
+      await response.json();
       setMessage('Kelime başarıyla eklendi!');
       setIsError(false);
       setFormData({ english: '', turkish: '', week: '' });
-      fetchWords();
+      await fetchWords();
       await refreshWeeks();
     } catch (error) {
+      console.error('Add word error:', error);
       setMessage('Kelime eklenirken bir hata oluştu');
       setIsError(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -92,6 +103,7 @@ export default function Admin() {
       return;
     }
 
+    setIsLoading(true);
     try {
       const response = await fetch(`/api/words/${id}`, {
         method: 'DELETE',
@@ -103,13 +115,24 @@ export default function Admin() {
 
       setMessage('Kelime başarıyla silindi!');
       setIsError(false);
-      fetchWords();
+      await fetchWords();
       await refreshWeeks();
     } catch (error) {
+      console.error('Delete word error:', error);
       setMessage('Kelime silinirken bir hata oluştu');
       setIsError(true);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -171,8 +194,9 @@ export default function Admin() {
               <button 
                 type="submit" 
                 className="btn bg-white text-primary hover:bg-primary/5 border-2 border-primary/20 rounded-xl px-8 hover:shadow-lg transition-all"
+                disabled={isLoading}
               >
-                Kelime Ekle
+                {isLoading ? 'Ekleniyor...' : 'Kelime Ekle'}
               </button>
             </div>
           </form>
@@ -202,15 +226,16 @@ export default function Admin() {
               </thead>
               <tbody>
                 {words.map((word) => (
-                  <tr key={word.id} className="hover:bg-base-200/50">
-                    <td className="text-base-content">{word.english}</td>
-                    <td className="text-base-content">{word.turkish}</td>
-                    <td className="text-base-content">{word.week}</td>
-                    <td className="text-base-content/70">{new Date(word.createdAt).toLocaleDateString('tr-TR')}</td>
+                  <tr key={word.id}>
+                    <td>{word.english}</td>
+                    <td>{word.turkish}</td>
+                    <td>{word.week}</td>
+                    <td>{new Date(word.createdAt).toLocaleDateString('tr-TR')}</td>
                     <td>
                       <button
                         onClick={() => handleDelete(word.id)}
-                        className="btn btn-sm bg-white text-red-500 hover:bg-red-50 border-2 border-red-200 rounded-xl px-4 hover:shadow-lg transition-all"
+                        className="btn btn-sm bg-white text-red-500 hover:bg-red-50 border-2 border-red-200 rounded-xl"
+                        disabled={isLoading}
                       >
                         Sil
                       </button>

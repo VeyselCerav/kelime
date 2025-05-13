@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { cookies } from 'next/headers';
 import * as bcrypt from 'bcrypt';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
@@ -47,6 +45,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Login error:', error);
     return NextResponse.json(
       { error: 'Giriş yapılırken bir hata oluştu' },
       { status: 500 }
@@ -55,7 +54,12 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const cookieStore = cookies();
-  const session = cookieStore.get('session');
-  return NextResponse.json({ isLoggedIn: !!session?.value });
+  try {
+    const cookieStore = cookies();
+    const session = cookieStore.get('session');
+    return NextResponse.json({ isLoggedIn: !!session?.value });
+  } catch (error) {
+    console.error('Auth check error:', error);
+    return NextResponse.json({ isLoggedIn: false });
+  }
 } 
