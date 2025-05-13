@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 
 interface TimeLeft {
   days: number;
+  hours: number;
+  minutes: number;
 }
 
 export default function Countdown() {
@@ -14,12 +16,16 @@ export default function Countdown() {
 
     if (difference > 0) {
       return {
-        days: Math.floor(difference / (1000 * 60 * 60 * 24))
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
       };
     }
 
     return {
-      days: 0
+      days: 0,
+      hours: 0,
+      minutes: 0
     };
   };
 
@@ -28,7 +34,8 @@ export default function Countdown() {
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft(calculateTimeLeft());
-    }, 1000 * 60 * 60); // Her saat başı güncelle
+    }, 1000 * 60); // Her dakika güncelle
+
     return () => clearInterval(timer);
   }, []);
 
@@ -38,11 +45,27 @@ export default function Countdown() {
         Kasım 2025 YDS'ye Kalan Süre
       </h2>
       
-      <div className="flex flex-col items-center">
-        <div className="text-5xl font-bold text-red-600">
-          {timeLeft.days}
+      <div className="flex gap-8">
+        <div className="flex flex-col items-center">
+          <div className="text-5xl font-bold text-red-600">
+            {timeLeft.days}
+          </div>
+          <div className="text-xl text-base-content/70 mt-2">Gün</div>
         </div>
-        <div className="text-xl text-base-content/70 mt-2">Gün</div>
+
+        <div className="flex flex-col items-center">
+          <div className="text-5xl font-bold text-red-600">
+            {timeLeft.hours}
+          </div>
+          <div className="text-xl text-base-content/70 mt-2">Saat</div>
+        </div>
+
+        <div className="flex flex-col items-center">
+          <div className="text-5xl font-bold text-red-600">
+            {timeLeft.minutes}
+          </div>
+          <div className="text-xl text-base-content/70 mt-2">Dakika</div>
+        </div>
       </div>
 
       <p className="text-base-content/70 text-center mt-2">
