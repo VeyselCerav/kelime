@@ -20,8 +20,13 @@ export function WeekProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch('/api/words');
       const words = await response.json();
       if (words.length > 0) {
-        const maxWeek = Math.max(...words.map((word: any) => word.week));
-        setTotalWeeks(maxWeek);
+        // Tüm haftaları bir diziye al ve boş olan haftaları da dahil et
+        const weeks = words.map((word: any) => word.week);
+        const maxWeek = Math.max(...weeks);
+        
+        // Eğer maxWeek 1'den büyükse, o sayıyı kullan
+        setTotalWeeks(maxWeek > 1 ? maxWeek : 1);
+        
         // Eğer seçili hafta maksimum haftadan büyükse, seçili haftayı güncelle
         if (selectedWeek > maxWeek) {
           setSelectedWeek(maxWeek);
