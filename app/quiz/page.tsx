@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useWeek } from '../context/WeekContext';
+import { useSearchParams } from 'next/navigation';
 
 interface Word {
-  id: number;
+  id: string;
   english: string;
   turkish: string;
   week: number;
@@ -12,111 +13,124 @@ interface Word {
 
 interface Question {
   word: string;
-  options: string[];
   correctAnswer: string;
+  options: string[];
 }
 
 export default function Quiz() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [selectedAnswer, setSelectedAnswer] = useState<string>('');
+  const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
-  const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
   const { selectedWeek } = useWeek();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get('mode');
 
   useEffect(() => {
-    fetchWords();
-  }, [selectedWeek]);
+    if (mode === 'practice') {
+      // Practice modunda localStorage'dan kelimeleri al
+      const practiceWords = localStorage.getItem('practiceWords');
+      if (practiceWords) {
+        prepareQuestions(JSON.parse(practiceWords));
+      }
+    } else {
+      // Normal modda API'den kelimeleri al
+      fetchWords();
+    }
+  }, [selectedWeek, mode]);
 
   const fetchWords = async () => {
     try {
       const response = await fetch('/api/words');
-      const allWords: Word[] = await response.json();
-      
-      const weekWords = allWords.filter(word => word.week === selectedWeek);
-      
-      if (weekWords.length < 4) {
-        setIsLoading(false);
-        setQuestions([]);
-        return;
-      }
-
-      const generatedQuestions = generateQuestions(weekWords, allWords);
-      setQuestions(generatedQuestions);
-      setIsLoading(false);
-      setCurrentQuestionIndex(0);
-      setScore(0);
-      setShowResult(false);
-      setSelectedAnswer(null);
-      setShowCorrectAnswer(false);
+      const data = await response.json();
+      // Seçili haftaya göre kelimeleri filtrele
+      const filteredWords = data.filter((word: Word) => word.week === selectedWeek);
+      prepareQuestions(filteredWords);
     } catch (error) {
       console.error('Kelimeler yüklenirken hata oluştu:', error);
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const generateQuestions = (weekWords: Word[], allWords: Word[]): Question[] => {
-    const shuffledWords = [...weekWords].sort(() => Math.random() - 0.5);
-    return shuffledWords.map((word) => {
-      const otherWords = allWords.filter(w => w.id !== word.id);
+  const prepareQuestions = (words: Word[]) => {
+    if (words.length < 4) {
+      setQuestions([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const preparedQuestions = words.map(word => {
+      // Her soru için 3 yanlış cevap seç
+      const otherWords = words.filter(w => w.id !== word.id);
       const wrongAnswers = otherWords
         .sort(() => Math.random() - 0.5)
         .slice(0, 3)
         .map(w => w.turkish);
 
+      // Doğru cevabı rastgele bir pozisyona ekle
       const options = [...wrongAnswers];
       const correctAnswerIndex = Math.floor(Math.random() * 4);
       options.splice(correctAnswerIndex, 0, word.turkish);
 
       return {
         word: word.english,
-        options,
-        correctAnswer: word.turkish
+        correctAnswer: word.turkish,
+        options
       };
     });
+
+    setQuestions(preparedQuestions);
+    setIsLoading(false);
   };
 
   const handleAnswerSelect = (answer: string) => {
     setSelectedAnswer(answer);
     setShowCorrectAnswer(true);
+
+    if (answer === questions[currentQuestionIndex].correctAnswer) {
+      setScore(score + 1);
+    }
   };
 
   const handleNext = () => {
-    if (selectedAnswer === questions[currentQuestionIndex].correctAnswer) {
-      setScore(score + 1);
-    }
-
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswer(null);
-      setShowCorrectAnswer(false);
-    } else {
+    if (currentQuestionIndex === questions.length - 1) {
       setShowResult(true);
+    } else {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setSelectedAnswer('');
+      setShowCorrectAnswer(false);
     }
   };
 
   const restartQuiz = () => {
-    fetchWords();
+    setCurrentQuestionIndex(0);
+    setSelectedAnswer('');
+    setShowCorrectAnswer(false);
+    setScore(0);
+    setShowResult(false);
+    if (mode === 'practice') {
+      window.location.href = '/practice';
+    }
   };
 
   const getButtonStyle = (option: string) => {
     if (!showCorrectAnswer) {
-      return selectedAnswer === option
-        ? 'border-primary text-primary shadow-lg'
-        : 'border-base-300 text-base-content hover:border-primary/30 hover:shadow-md';
+      return 'hover:bg-primary/5 hover:border-primary/30';
     }
-
+    
     if (option === questions[currentQuestionIndex].correctAnswer) {
-      return 'border-green-500 bg-green-50 text-green-700 shadow-lg';
+      return 'bg-green-50 border-green-500 text-green-700 hover:bg-green-100';
     }
-
-    if (selectedAnswer === option && option !== questions[currentQuestionIndex].correctAnswer) {
-      return 'border-red-500 bg-red-50 text-red-700 shadow-lg';
+    
+    if (option === selectedAnswer && option !== questions[currentQuestionIndex].correctAnswer) {
+      return 'bg-red-50 border-red-500 text-red-700';
     }
-
-    return 'border-base-300 text-base-content/50';
+    
+    return 'opacity-50';
   };
 
   if (isLoading) {
@@ -131,10 +145,13 @@ export default function Quiz() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-          Hafta {selectedWeek} - Kelime Testi
+          {mode === 'practice' ? 'Tekrar - Test' : `Hafta ${selectedWeek} - Kelime Testi`}
         </h1>
         <p className="text-base-content/70">
-          Bu haftaya ait yeterli kelime yok. Test için en az 4 kelime gerekiyor.
+          {mode === 'practice'
+            ? 'Lütfen önce Tekrar Et sayfasından kelime seçin.'
+            : 'Bu haftaya ait yeterli kelime yok. Test için en az 4 kelime gerekiyor.'
+          }
         </p>
       </div>
     );
@@ -144,7 +161,7 @@ export default function Quiz() {
     return (
       <div className="flex flex-col items-center justify-center gap-8 min-h-[60vh]">
         <h2 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-          Hafta {selectedWeek} - Test Sonucu
+          {mode === 'practice' ? 'Tekrar - Test Sonucu' : `Hafta ${selectedWeek} - Test Sonucu`}
         </h2>
         <div className="text-xl text-base-content/80">
           Toplam {questions.length} sorudan {score} tanesini doğru cevapladınız.
@@ -156,7 +173,7 @@ export default function Quiz() {
           className="btn bg-white text-primary hover:bg-primary/5 border-2 border-primary/20 rounded-xl px-8 hover:shadow-lg transition-all"
           onClick={restartQuiz}
         >
-          Testi Tekrar Çöz
+          {mode === 'practice' ? 'Yeni Tekrar' : 'Testi Tekrar Çöz'}
         </button>
       </div>
     );
@@ -165,7 +182,7 @@ export default function Quiz() {
   return (
     <div className="flex flex-col items-center justify-center gap-8 py-8">
       <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-        Hafta {selectedWeek} - Kelime Testi
+        {mode === 'practice' ? 'Tekrar - Test' : `Hafta ${selectedWeek} - Kelime Testi`}
       </h1>
       
       <div className="w-full max-w-2xl">
@@ -181,11 +198,41 @@ export default function Quiz() {
               {questions[currentQuestionIndex].options.map((option, index) => (
                 <button
                   key={index}
-                  className={`btn bg-white border-2 transition-all ${getButtonStyle(option)} rounded-xl py-4`}
+                  className={`relative btn bg-white border-2 transition-all ${getButtonStyle(option)} rounded-xl py-4`}
                   onClick={() => handleAnswerSelect(option)}
                   disabled={showCorrectAnswer}
                 >
-                  {option}
+                  <span>{option}</span>
+                  {showCorrectAnswer && option === questions[currentQuestionIndex].correctAnswer && (
+                    <svg 
+                      className="absolute right-4 w-6 h-6 text-green-600" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M5 13l4 4L19 7" 
+                      />
+                    </svg>
+                  )}
+                  {showCorrectAnswer && option === selectedAnswer && option !== questions[currentQuestionIndex].correctAnswer && (
+                    <svg 
+                      className="absolute right-4 w-6 h-6 text-red-600" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M6 18L18 6M6 6l12 12" 
+                      />
+                    </svg>
+                  )}
                 </button>
               ))}
             </div>

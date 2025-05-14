@@ -54,6 +54,14 @@ export default function Navbar() {
             >
               Test
             </Link>
+            <Link
+              href="/practice"
+              className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                isActive('/practice') ? 'bg-primary/10 text-primary' : 'text-base-content/70 hover:bg-primary/5 hover:text-primary'
+              }`}
+            >
+              Tekrar Et
+            </Link>
           </div>
 
           {/* Hafta Seçici ve Mobil Menü Butonu */}
@@ -148,6 +156,15 @@ export default function Navbar() {
               }`}
             >
               Test
+            </Link>
+            <Link
+              href="/practice"
+              onClick={closeMenu}
+              className={`block px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                isActive('/practice') ? 'bg-primary/10 text-primary' : 'text-base-content/70 hover:bg-primary/5 hover:text-primary'
+              }`}
+            >
+              Tekrar Et
             </Link>
           </div>
         </div>
