@@ -1,25 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { useState } from 'react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const { data: session, status } = useSession();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    if (session?.user?.isAdmin) {
-      router.replace('/yonetici');
-    } else if (session) {
-      router.replace('/');
-    }
-  }, [session, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +27,11 @@ export default function LoginPage() {
       if (result?.error) {
         setError(result.error);
       } else if (result?.ok) {
-        router.refresh();
+        if (username === 'semihsacli') {
+          window.location.href = '/yonetici';
+        } else {
+          window.location.href = '/';
+        }
       }
     } catch (error) {
       setError('Giriş yapılırken bir hata oluştu');
@@ -44,10 +39,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-
-  if (status === 'loading') {
-    return <div>Yükleniyor...</div>;
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
