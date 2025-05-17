@@ -76,25 +76,7 @@ export const config = {
 
 export default withAuth(
   function middleware(req) {
-    const token = req.nextauth.token;
-    const pathname = req.nextUrl.pathname;
-
-    // Admin kontrolü
-    if (pathname.startsWith("/yonetici")) {
-      if (!token?.isAdmin) {
-        return NextResponse.redirect(new URL("/", req.url));
-      }
-    }
-
-    // API istekleri için admin kontrolü
-    if ((pathname.startsWith("/api/words/create") || pathname.startsWith("/api/words/delete")) && !token?.isAdmin) {
-      return NextResponse.json(
-        { error: 'Bu işlem için yetkiniz yok' },
-        { status: 403 }
-      );
-    }
-
-    return NextResponse.next();
+    return;
   },
   {
     callbacks: {
@@ -104,15 +86,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: [
-    '/yonetici/:path*',
-    '/api/words/create/:path*',
-    '/api/words/delete/:path*',
-    '/unlearned-words/:path*',
-    '/api/unlearned-words/:path*',
-    '/api/learned-words/:path*',
-    '/api/daily-goal/:path*',
-    '/api/progress/:path*',
-    '/profile/:path*'
-  ]
+  matcher: ["/yonetici"]
 }; 
