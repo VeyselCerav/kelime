@@ -9,16 +9,8 @@ if (!process.env.NEXTAUTH_SECRET) {
 }
 
 export const authOptions = {
+  debug: true,
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      authorization: {
-        params: {
-          prompt: "select_account"
-        }
-      }
-    }),
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
@@ -43,14 +35,18 @@ export const authOptions = {
         });
 
         if (!user || !user.emailVerified) {
+          console.log('Kullanıcı bulunamadı veya email doğrulanmamış:', credentials.username);
           throw new Error('Kullanıcı bulunamadı veya email doğrulanmamış');
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isPasswordValid) {
+          console.log('Geçersiz şifre:', credentials.username);
           throw new Error('Geçersiz şifre');
         }
+
+        console.log('Başarılı giriş:', user.username, 'Admin:', user.isAdmin);
 
         return {
           id: user.id.toString(),
@@ -67,6 +63,7 @@ export const authOptions = {
         token.id = user.id;
         token.username = user.username;
         token.isAdmin = user.isAdmin;
+        console.log('JWT callback - token:', token);
       }
       return token;
     },
@@ -78,6 +75,7 @@ export const authOptions = {
           username: token.username,
           isAdmin: token.isAdmin
         };
+        console.log('Session callback - session:', session);
       }
       return session;
     }
