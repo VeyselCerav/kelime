@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useWeek } from '../context/WeekContext';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import WordCard from '../components/WordCard';
 
 interface Word {
   id: string;
@@ -17,22 +19,27 @@ export default function Practice() {
   const [words, setWords] = useState<Word[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { totalWeeks } = useWeek();
+  const [error, setError] = useState('');
+  const { data: session } = useSession();
 
   useEffect(() => {
+    const fetchWords = async () => {
+      try {
+        const response = await fetch('/api/words');
+        if (!response.ok) {
+          throw new Error('Kelimeler yüklenirken bir hata oluştu');
+        }
+        const data = await response.json();
+        setWords(data);
+      } catch (error) {
+        setError('Kelimeler yüklenirken bir hata oluştu');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchWords();
   }, []);
-
-  const fetchWords = async () => {
-    try {
-      const response = await fetch('/api/words');
-      const data = await response.json();
-      setWords(data);
-    } catch (error) {
-      console.error('Kelimeler yüklenirken hata oluştu:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleWeekToggle = (week: number) => {
     setSelectedWeeks(prev =>
@@ -72,8 +79,16 @@ export default function Practice() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <p className="text-base-content/70">Yükleniyor...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Yükleniyor...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-red-600">{error}</div>
       </div>
     );
   }

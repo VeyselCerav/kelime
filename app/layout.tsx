@@ -1,19 +1,25 @@
+import type { Metadata } from 'next';
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { getServerSession } from 'next-auth';
+import { authOptions } from './api/auth/[...nextauth]/route';
+import Providers from './providers';
 import ClientLayout from './ClientLayout';
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-  title: "Kelime Öğrenme",
+export const metadata: Metadata = {
+  title: "Kelime Öğrenme Uygulaması",
   description: "İngilizce kelime öğrenme uygulaması",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="tr" data-theme="light" suppressHydrationWarning>
       <head>
@@ -61,9 +67,11 @@ export default function RootLayout({
         `}} />
       </head>
       <body className={inter.className}>
-        <ClientLayout>
-          {children}
-        </ClientLayout>
+        <Providers session={session}>
+          <ClientLayout>
+            {children}
+          </ClientLayout>
+        </Providers>
       </body>
     </html>
   );

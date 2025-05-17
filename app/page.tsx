@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Countdown from './components/Countdown';
+import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -56,6 +57,104 @@ export default function Home() {
                 </p>
               </div>
             </a>
+          </div>
+
+          {/* Membership Features Table */}
+          <div className="mt-16 w-full">
+            <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">
+              Üyelik Özellikleri
+            </h2>
+            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Özellikler</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-500">Üye Olmayan</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-primary">Üye</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  <tr>
+                    <td className="px-6 py-4 text-sm text-gray-900">Kelime Kartları</td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 text-sm text-gray-900">Kelime Testi</td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 text-sm text-gray-900">Ezberlenemeyen Kelimeler Listesi</td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 text-sm text-gray-900">Kelime İlerleme Takibi</td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 text-sm text-gray-900">Özelleştirilmiş Tekrar Listesi</td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Call to Action */}
+            <div className="mt-8 text-center">
+              <Link 
+                href="/register" 
+                className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary/90 transition-colors"
+              >
+                Hemen Üye Ol
+              </Link>
+              <p className="mt-2 text-sm text-gray-500">
+                Zaten üye misiniz? <Link href="/login" className="text-primary hover:text-primary/90">Giriş yapın</Link>
+              </p>
+            </div>
           </div>
 
           {/* Features Section */}

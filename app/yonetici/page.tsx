@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeek } from '../context/WeekContext';
+import { useSession } from 'next-auth/react';
 
 interface Word {
   id: number;
@@ -24,23 +25,17 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { refreshWeeks } = useWeek();
+  const { data: session } = useSession();
 
-  const checkAuth = useCallback(async () => {
-    try {
-      const response = await fetch('/api/auth');
-      if (!response.ok) throw new Error('Auth check failed');
-      const data = await response.json();
-
-      if (!data.isLoggedIn) {
-        router.push('/login');
-      }
-    } catch (error) {
-      console.error('Yetkilendirme kontrolü yapılırken hata oluştu:', error);
-      router.push('/login');
+  useEffect(() => {
+    if (!session || session.user?.username !== 'semihsacli') {
+      router.push('/');
+      return;
     }
-  }, [router]);
+    fetchWords();
+  }, [session, router]);
 
-  const fetchWords = useCallback(async () => {
+  const fetchWords = async () => {
     try {
       const response = await fetch('/api/words');
       if (!response.ok) throw new Error('Failed to fetch words');
@@ -53,18 +48,13 @@ export default function Admin() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    checkAuth();
-    fetchWords();
-  }, [checkAuth, fetchWords]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const response = await fetch('/api/words', {
+      const response = await fetch('/api/words/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +63,8 @@ export default function Admin() {
       });
 
       if (!response.ok) {
-        throw new Error('Kelime eklenirken bir hata oluştu');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Kelime eklenirken bir hata oluştu');
       }
 
       await response.json();
@@ -84,7 +75,7 @@ export default function Admin() {
       await refreshWeeks();
     } catch (error) {
       console.error('Add word error:', error);
-      setMessage('Kelime eklenirken bir hata oluştu');
+      setMessage(error instanceof Error ? error.message : 'Kelime eklenirken bir hata oluştu');
       setIsError(true);
     } finally {
       setIsLoading(false);
@@ -105,12 +96,17 @@ export default function Admin() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/words/${id}`, {
+      const response = await fetch('/api/words/delete', {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ wordId: id }),
       });
 
       if (!response.ok) {
-        throw new Error('Kelime silinirken bir hata oluştu');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Kelime silinirken bir hata oluştu');
       }
 
       setMessage('Kelime başarıyla silindi!');
@@ -119,7 +115,7 @@ export default function Admin() {
       await refreshWeeks();
     } catch (error) {
       console.error('Delete word error:', error);
-      setMessage('Kelime silinirken bir hata oluştu');
+      setMessage(error instanceof Error ? error.message : 'Kelime silinirken bir hata oluştu');
       setIsError(true);
     } finally {
       setIsLoading(false);

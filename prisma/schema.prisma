@@ -10,31 +10,65 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL2")
+  url      = env("DATABASE_URL_Three")
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  createdAt DateTime @default(now())
+  id             Int            @id @default(autoincrement())
+  username       String         @unique
+  password       String?
+  email          String         @unique
+  emailVerified  DateTime?
+  verificationToken String?     @unique
+  tokenExpiry    DateTime?      // Token geçerlilik süresi
+  isAdmin        Boolean        @default(false) // Yönetici rolü
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  learnedWords   LearnedWord[]
+  unlearnedWords UnlearnedWord[]
+  dailyGoals     DailyGoal[]
 }
 
 model Word {
-  id        Int      @id @default(autoincrement())
-  english   String
-  turkish   String
-  createdAt DateTime @default(now())
-  week      Int
-  tests     Test[]
+  id             Int            @id @default(autoincrement())
+  english        String
+  turkish        String
+  week           Int
+  createdAt      DateTime       @default(now())
+  learnedBy      LearnedWord[]
+  unlearnedBy    UnlearnedWord[]
 }
 
-model Test {
+model UnlearnedWord {
   id        Int      @id @default(autoincrement())
-  question  String
-  options   String   // Türkçe seçenekler JSON string olarak saklanacak
-  answer    String   // Doğru cevap
+  userId    Int
   wordId    Int
-  word      Word     @relation(fields: [wordId], references: [id])
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word      Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+}
+
+model LearnedWord {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  wordId    Int
+  isLearned Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word      Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+}
+
+model DailyGoal {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  date      DateTime @default(now())
+  completed Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
 }
