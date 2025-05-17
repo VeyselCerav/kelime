@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { withAuth } from "next-auth/middleware";
 
 // Korumalı rotalar
 const protectedRoutes = [
@@ -71,4 +72,47 @@ export const config = {
     '/api/words/create/:path*',
     '/api/words/delete/:path*'
   ],
+};
+
+export default withAuth(
+  function middleware(req) {
+    const token = req.nextauth.token;
+    const pathname = req.nextUrl.pathname;
+
+    // Admin kontrolü
+    if (pathname.startsWith("/yonetici")) {
+      if (!token?.isAdmin) {
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+    }
+
+    // API istekleri için admin kontrolü
+    if ((pathname.startsWith("/api/words/create") || pathname.startsWith("/api/words/delete")) && !token?.isAdmin) {
+      return NextResponse.json(
+        { error: 'Bu işlem için yetkiniz yok' },
+        { status: 403 }
+      );
+    }
+
+    return NextResponse.next();
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token
+    },
+  }
+);
+
+export const config = {
+  matcher: [
+    '/yonetici/:path*',
+    '/api/words/create/:path*',
+    '/api/words/delete/:path*',
+    '/unlearned-words/:path*',
+    '/api/unlearned-words/:path*',
+    '/api/learned-words/:path*',
+    '/api/daily-goal/:path*',
+    '/api/progress/:path*',
+    '/profile/:path*'
+  ]
 }; 

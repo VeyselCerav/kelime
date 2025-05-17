@@ -1,20 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
+  const { data: session, status } = useSession();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
-  const isVerified = searchParams.get('verified') === 'true';
-  const isRegistered = searchParams.get('registered') === 'true';
+
+  useEffect(() => {
+    if (session?.user?.isAdmin) {
+      router.replace('/yonetici');
+    } else if (session) {
+      router.replace('/');
+    }
+  }, [session, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,9 +34,8 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError('Kullanıcı adı veya şifre hatalı');
-      } else {
-        router.push(callbackUrl);
+        setError(result.error);
+      } else if (result?.ok) {
         router.refresh();
       }
     } catch (error) {
@@ -41,9 +45,9 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl });
-  };
+  if (status === 'loading') {
+    return <div>Yükleniyor...</div>;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -52,20 +56,6 @@ export default function LoginPage() {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Hesabınıza giriş yapın
           </h2>
-          {isVerified && (
-            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-600 text-center">
-                Email adresiniz doğrulandı! Şimdi giriş yapabilirsiniz.
-              </p>
-            </div>
-          )}
-          {isRegistered && (
-            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-600 text-center">
-                Kayıt başarılı! Lütfen email adresinizi doğrulayın.
-              </p>
-            </div>
-          )}
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -122,24 +112,6 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-gray-50 text-gray-500">Veya</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          className="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <img src="https://www.google.com/favicon.ico" alt="Google" className="h-5 w-5 mr-2" />
-          Google ile Giriş Yap
-        </button>
 
         <div className="text-sm text-center">
           <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">

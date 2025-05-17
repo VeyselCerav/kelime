@@ -25,15 +25,23 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { refreshWeeks } = useWeek();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      router.replace('/login');
+    },
+  });
 
   useEffect(() => {
-    if (!session || session.user?.username !== 'semihsacli') {
-      router.push('/');
+    if (status === "loading") return;
+
+    if (!session?.user?.isAdmin) {
+      router.replace('/');
       return;
     }
+
     fetchWords();
-  }, [session, router]);
+  }, [session, status]);
 
   const fetchWords = async () => {
     try {

@@ -27,97 +27,64 @@ export const authOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) {
-          return null;
+          throw new Error('Kullanıcı adı ve şifre gerekli');
         }
 
         const user = await prisma.user.findUnique({
-          where: { username: credentials.username }
+          where: { username: credentials.username },
+          select: {
+            id: true,
+            username: true,
+            password: true,
+            email: true,
+            emailVerified: true,
+            isAdmin: true
+          }
         });
 
         if (!user || !user.emailVerified) {
-          return null;
+          throw new Error('Kullanıcı bulunamadı veya email doğrulanmamış');
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isPasswordValid) {
-          return null;
+          throw new Error('Geçersiz şifre');
         }
 
         return {
           id: user.id.toString(),
           username: user.username,
           email: user.email,
+          isAdmin: user.isAdmin
         };
       }
     })
   ],
-  pages: {
-    signIn: '/login',
-    verifyRequest: '/auth/verify-request',
-    error: '/auth/error',
-  },
   callbacks: {
-    async signIn({ user, account, profile }) {
-      if (account?.provider === 'google') {
-        try {
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email }
-          });
-
-          if (!existingUser) {
-            // Google profil bilgisinden username oluştur
-            const suggestedUsername = profile?.name ? 
-              profile.name.replace(/\s+/g, '').toLowerCase() : 
-              user.email.split('@')[0];
-
-            // Username'in benzersiz olduğundan emin ol
-            let finalUsername = suggestedUsername;
-            let counter = 1;
-            while (await prisma.user.findUnique({ where: { username: finalUsername } })) {
-              finalUsername = `${suggestedUsername}${counter}`;
-              counter++;
-            }
-
-            await prisma.user.create({
-              data: {
-                email: user.email,
-                username: finalUsername,
-                emailVerified: new Date(),
-                password: '',
-              }
-            });
-          }
-          return true;
-        } catch (error) {
-          console.error('Google sign in error:', error);
-          return false;
-        }
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.username = user.username;
+        token.isAdmin = user.isAdmin;
       }
-      return true;
+      return token;
     },
     async session({ session, token }) {
       if (token) {
-        const user = await prisma.user.findUnique({
-          where: { email: token.email }
-        });
-
-        if (user) {
-          session.user = {
-            id: user.id.toString(),
-            username: user.username,
-            email: user.email,
-          };
-        }
+        session.user = {
+          ...session.user,
+          id: token.id,
+          username: token.username,
+          isAdmin: token.isAdmin
+        };
       }
       return session;
-    },
-    async jwt({ token, user, account }) {
-      if (user) {
-        token.username = user.username;
-      }
-      return token;
     }
+  },
+  pages: {
+    signIn: '/login',
+    error: '/auth/error',
   },
   session: {
     strategy: 'jwt',
