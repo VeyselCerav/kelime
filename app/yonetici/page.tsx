@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWeek } from '../context/WeekContext';
 import { useSession } from 'next-auth/react';
 
 interface Word {
@@ -24,39 +23,38 @@ export default function Admin() {
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const { refreshWeeks } = useWeek();
-  const { data: session, status } = useSession({
-    required: true,
-    onUnauthenticated() {
-      router.replace('/login');
-    },
-  });
+  const { data: session, status } = useSession();
 
   useEffect(() => {
-    if (status === "loading") return;
+    const init = async () => {
+      try {
+        if (status === "loading") return;
 
-    if (!session?.user?.isAdmin) {
-      router.replace('/');
-      return;
-    }
+        if (!session) {
+          router.replace('/login');
+          return;
+        }
 
-    fetchWords();
-  }, [session, status]);
+        if (!session.user?.isAdmin) {
+          router.replace('/');
+          return;
+        }
 
-  const fetchWords = async () => {
-    try {
-      const response = await fetch('/api/words');
-      if (!response.ok) throw new Error('Failed to fetch words');
-      const data = await response.json();
-      setWords(data);
-    } catch (error) {
-      console.error('Kelimeler yüklenirken hata oluştu:', error);
-      setMessage('Kelimeler yüklenirken hata oluştu');
-      setIsError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        const response = await fetch('/api/words');
+        if (!response.ok) throw new Error('Failed to fetch words');
+        const data = await response.json();
+        setWords(data);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setMessage('Bir hata oluştu');
+        setIsError(true);
+        setIsLoading(false);
+      }
+    };
+
+    init();
+  }, [session, status, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +77,12 @@ export default function Admin() {
       setMessage('Kelime başarıyla eklendi!');
       setIsError(false);
       setFormData({ english: '', turkish: '', week: '' });
-      await fetchWords();
-      await refreshWeeks();
+
+      // Kelimeleri yeniden yükle
+      const wordsResponse = await fetch('/api/words');
+      if (!wordsResponse.ok) throw new Error('Failed to fetch words');
+      const wordsData = await wordsResponse.json();
+      setWords(wordsData);
     } catch (error) {
       console.error('Add word error:', error);
       setMessage(error instanceof Error ? error.message : 'Kelime eklenirken bir hata oluştu');
@@ -88,13 +90,6 @@ export default function Admin() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
   };
 
   const handleDelete = async (id: number) => {
@@ -119,8 +114,7 @@ export default function Admin() {
 
       setMessage('Kelime başarıyla silindi!');
       setIsError(false);
-      await fetchWords();
-      await refreshWeeks();
+      setWords(words.filter(word => word.id !== id));
     } catch (error) {
       console.error('Delete word error:', error);
       setMessage(error instanceof Error ? error.message : 'Kelime silinirken bir hata oluştu');
@@ -130,7 +124,7 @@ export default function Admin() {
     }
   };
 
-  if (isLoading) {
+  if (status === "loading" || isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -138,117 +132,103 @@ export default function Admin() {
     );
   }
 
+  if (!session?.user?.isAdmin) {
+    return null;
+  }
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
-      <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-8">
-        Kelime Yönetimi
-      </h1>
+      <h1 className="text-4xl font-bold mb-8">Kelime Yönetimi</h1>
 
-      <div className="card bg-white border-2 border-primary/10 shadow-lg hover:shadow-xl transition-all rounded-2xl mb-8">
-        <div className="card-body">
-          <h2 className="card-title text-2xl mb-4 text-base-content">Yeni Kelime Ekle</h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="label">
-                  <span className="label-text text-base-content/70">İngilizce</span>
-                </label>
-                <input
-                  type="text"
-                  name="english"
-                  value={formData.english}
-                  onChange={handleChange}
-                  className="input bg-white border-2 border-base-300 focus:border-primary/30 w-full rounded-xl"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="label">
-                  <span className="label-text text-base-content/70">Türkçe</span>
-                </label>
-                <input
-                  type="text"
-                  name="turkish"
-                  value={formData.turkish}
-                  onChange={handleChange}
-                  className="input bg-white border-2 border-base-300 focus:border-primary/30 w-full rounded-xl"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="label">
-                  <span className="label-text text-base-content/70">Hafta</span>
-                </label>
-                <input
-                  type="number"
-                  name="week"
-                  value={formData.week}
-                  onChange={handleChange}
-                  className="input bg-white border-2 border-base-300 focus:border-primary/30 w-full rounded-xl"
-                  required
-                  min="1"
-                />
-              </div>
-            </div>
+      <div className="bg-white shadow rounded-lg p-6 mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Yeni Kelime Ekle</h2>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input
+              type="text"
+              name="english"
+              value={formData.english}
+              onChange={(e) => setFormData({...formData, english: e.target.value})}
+              placeholder="İngilizce"
+              className="input input-bordered w-full"
+              required
+            />
+            
+            <input
+              type="text"
+              name="turkish"
+              value={formData.turkish}
+              onChange={(e) => setFormData({...formData, turkish: e.target.value})}
+              placeholder="Türkçe"
+              className="input input-bordered w-full"
+              required
+            />
+            
+            <input
+              type="number"
+              name="week"
+              value={formData.week}
+              onChange={(e) => setFormData({...formData, week: e.target.value})}
+              placeholder="Hafta"
+              className="input input-bordered w-full"
+              required
+              min="1"
+            />
+          </div>
 
-            <div className="flex justify-end">
-              <button 
-                type="submit" 
-                className="btn bg-white text-primary hover:bg-primary/5 border-2 border-primary/20 rounded-xl px-8 hover:shadow-lg transition-all"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Ekleniyor...' : 'Kelime Ekle'}
-              </button>
-            </div>
-          </form>
+          <div className="flex justify-end">
+            <button 
+              type="submit" 
+              className="btn btn-primary"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Ekleniyor...' : 'Kelime Ekle'}
+            </button>
+          </div>
+        </form>
 
-          {message && (
-            <div className={`alert ${isError ? 'bg-red-50 text-red-600 border-red-200' : 'bg-green-50 text-green-600 border-green-200'} mt-4 border-2 rounded-xl`}>
-              {message}
-            </div>
-          )}
-        </div>
+        {message && (
+          <div className={`mt-4 p-4 rounded-lg ${isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+            {message}
+          </div>
+        )}
       </div>
 
-      <div className="card bg-white border-2 border-primary/10 shadow-lg hover:shadow-xl transition-all rounded-2xl">
-        <div className="card-body">
-          <h2 className="card-title text-2xl mb-4 text-base-content">Kelime Listesi</h2>
-          
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr className="text-base-content/70">
-                  <th>İngilizce</th>
-                  <th>Türkçe</th>
-                  <th>Hafta</th>
-                  <th>Eklenme Tarihi</th>
-                  <th>İşlemler</th>
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-2xl font-semibold mb-4">Kelime Listesi</h2>
+        
+        <div className="overflow-x-auto">
+          <table className="table w-full">
+            <thead>
+              <tr>
+                <th>İngilizce</th>
+                <th>Türkçe</th>
+                <th>Hafta</th>
+                <th>Eklenme Tarihi</th>
+                <th>İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              {words.map((word) => (
+                <tr key={word.id}>
+                  <td>{word.english}</td>
+                  <td>{word.turkish}</td>
+                  <td>{word.week}</td>
+                  <td>{new Date(word.createdAt).toLocaleDateString('tr-TR')}</td>
+                  <td>
+                    <button
+                      onClick={() => handleDelete(word.id)}
+                      className="btn btn-sm btn-error"
+                      disabled={isLoading}
+                    >
+                      Sil
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {words.map((word) => (
-                  <tr key={word.id}>
-                    <td>{word.english}</td>
-                    <td>{word.turkish}</td>
-                    <td>{word.week}</td>
-                    <td>{new Date(word.createdAt).toLocaleDateString('tr-TR')}</td>
-                    <td>
-                      <button
-                        onClick={() => handleDelete(word.id)}
-                        className="btn btn-sm bg-white text-red-500 hover:bg-red-50 border-2 border-red-200 rounded-xl"
-                        disabled={isLoading}
-                      >
-                        Sil
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
