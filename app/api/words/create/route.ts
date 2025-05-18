@@ -7,14 +7,20 @@ export async function POST(request: Request) {
     // Admin kontrolü
     const token = await getToken({ req: request as any });
     
+    console.log('Token:', token);
+
     if (!token || !token.isAdmin) {
+      console.log('Yetkisiz erişim denemesi:', token);
       return NextResponse.json(
         { error: 'Bu işlem için yetkiniz yok' },
         { status: 403 }
       );
     }
 
-    const { word, meaning, example } = await request.json();
+    const body = await request.json();
+    console.log('Request body:', body);
+
+    const { word, meaning, example } = body;
 
     // Gerekli alanların kontrolü
     if (!word || !meaning) {
@@ -34,11 +40,13 @@ export async function POST(request: Request) {
       },
     });
 
+    console.log('Yeni kelime eklendi:', newWord);
+
     return NextResponse.json(newWord, { status: 201 });
   } catch (error) {
     console.error('Kelime ekleme hatası:', error);
     return NextResponse.json(
-      { error: 'Kelime eklenirken bir hata oluştu' },
+      { error: 'Kelime eklenirken bir hata oluştu: ' + (error instanceof Error ? error.message : 'Bilinmeyen hata') },
       { status: 500 }
     );
   }
