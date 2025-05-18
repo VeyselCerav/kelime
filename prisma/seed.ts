@@ -40,12 +40,14 @@ async function main() {
     const admin = await prisma.user.upsert({
       where: { username: 'semihsacli' },
       update: {
-        password: hashedPassword
+        password: hashedPassword,
+        isAdmin: true
       },
       create: {
         username: 'semihsacli',
         password: hashedPassword,
-        email: 'admin@example.com'
+        email: 'haftalikkelime@gmail.com',
+        isAdmin: true
       }
     });
 
@@ -54,7 +56,10 @@ async function main() {
     // Kelimeleri ekle
     for (const word of words) {
       await prisma.word.create({
-        data: word,
+        data: {
+          ...word,
+          addedBy: admin.username
+        },
       });
     }
 

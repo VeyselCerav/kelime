@@ -34,6 +34,7 @@ model Word {
   english        String
   turkish        String
   week           Int
+  addedBy        String        // Ekleyen admin kullanıcısı
   createdAt      DateTime       @default(now())
   learnedBy      LearnedWord[]
   unlearnedBy    UnlearnedWord[]

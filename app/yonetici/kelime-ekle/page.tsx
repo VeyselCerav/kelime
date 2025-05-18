@@ -12,8 +12,7 @@ export default function AddWordPage() {
   const [formData, setFormData] = useState({
     english: '',
     turkish: '',
-    week: '1',
-    example: ''
+    week: '1'
   });
 
   if (status === "loading") {
@@ -119,19 +118,6 @@ export default function AddWordPage() {
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label htmlFor="example" className="block text-sm font-medium text-gray-700">
-              Örnek Cümle
-            </label>
-            <textarea
-              id="example"
-              value={formData.example}
-              onChange={(e) => setFormData({ ...formData, example: e.target.value })}
-              rows={3}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
           </div>
 
           <div className="flex justify-end">

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('Request body:', body);
 
-    const { english, turkish, week, example } = body;
+    const { english, turkish, week } = body;
 
     // Gerekli alanların kontrolü
     if (!english || !turkish || !week) {
@@ -31,10 +31,9 @@ export async function POST(request: Request) {
     // Kelimeyi veritabanına ekle
     const newWord = await prisma.word.create({
       data: {
-        word: english,
-        meaning: turkish,
+        english: english,
+        turkish: turkish,
         week: parseInt(week),
-        example: example || '',
         addedBy: session.user.username,
       },
     });
