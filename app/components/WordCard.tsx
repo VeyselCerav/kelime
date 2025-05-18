@@ -31,7 +31,6 @@ export default function WordCard({ english, turkish, wordId, isAuthenticated, on
     setError('');
 
     try {
-      // Önce learned-words API'sine istek at
       const learnedResponse = await fetch('/api/learned-words', {
         method: 'POST',
         headers: {
@@ -48,7 +47,6 @@ export default function WordCard({ english, turkish, wordId, isAuthenticated, on
         throw new Error('Kelime işaretlenirken bir hata oluştu');
       }
 
-      // Sonra unlearned-words API'sine istek at
       const unlearnedResponse = await fetch('/api/unlearned-words', {
         method: 'POST',
         headers: {
@@ -62,6 +60,7 @@ export default function WordCard({ english, turkish, wordId, isAuthenticated, on
         throw new Error('Kelime ezberlenemeyenler listesine eklenirken bir hata oluştu');
       }
 
+      setIsFlipped(false); // Kartı İngilizce yüzüne çevir
       if (onActionComplete) {
         onActionComplete();
       }
@@ -101,6 +100,7 @@ export default function WordCard({ english, turkish, wordId, isAuthenticated, on
         throw new Error(data.error || 'Kelime işaretlenirken bir hata oluştu');
       }
 
+      setIsFlipped(false); // Kartı İngilizce yüzüne çevir
       if (onActionComplete) {
         onActionComplete();
       }
@@ -120,19 +120,22 @@ export default function WordCard({ english, turkish, wordId, isAuthenticated, on
         }`}
         onClick={handleFlip}
       >
-        <div className="absolute w-full h-full bg-white rounded-xl shadow-lg p-6 backface-hidden">
-          <div className="flex flex-col h-full justify-between">
-            <h3 className="text-2xl font-bold text-center text-gray-900">
-              {english}
-            </h3>
-          </div>
+        {/* İngilizce yüz */}
+        <div className="absolute w-full h-full bg-white rounded-xl shadow-lg p-6 backface-hidden flex items-center justify-center">
+          <h3 className="text-2xl font-bold text-center text-gray-900">
+            {english}
+          </h3>
         </div>
-        <div className="absolute w-full h-full bg-indigo-600 text-white rounded-xl shadow-lg p-6 backface-hidden rotate-y-180">
-          <h3 className="text-2xl font-bold text-center">{turkish}</h3>
+        
+        {/* Türkçe yüz */}
+        <div className="absolute w-full h-full bg-indigo-600 text-white rounded-xl shadow-lg p-6 backface-hidden rotate-y-180 flex items-center justify-center">
+          <h3 className="text-2xl font-bold text-center">
+            {turkish}
+          </h3>
         </div>
       </div>
 
-      {session && isAuthenticated && (
+      {isAuthenticated && (
         <div className="absolute top-2 right-2 left-2 flex justify-between z-10">
           <button
             onClick={(e) => {
