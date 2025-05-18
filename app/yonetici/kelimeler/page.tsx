@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 
 interface Word {
   id: string;
-  word: string;
-  meaning: string;
-  example: string;
+  english: string;
+  turkish: string;
+  week: number;
   addedBy: string;
   createdAt: string;
 }
@@ -110,7 +110,7 @@ export default function WordsPage() {
                 Anlam
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Örnek
+                Hafta
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Ekleyen
@@ -126,9 +126,9 @@ export default function WordsPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {words.map((word) => (
               <tr key={word.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{word.word}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{word.meaning}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{word.example}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{word.english}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{word.turkish}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{word.week}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{word.addedBy}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {new Date(word.createdAt).toLocaleDateString('tr-TR')}

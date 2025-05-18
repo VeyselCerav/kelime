@@ -1,41 +1,40 @@
 import { NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import prisma from '@/lib/prisma';
 
 export async function DELETE(request: Request) {
   try {
-    // Admin kontrolü
-    const token = await getToken({ req: request as any });
+    const session = await getServerSession(authOptions);
     
-    if (!token || !token.isAdmin) {
-      return NextResponse.json(
-        { error: 'Bu işlem için yetkiniz yok' },
-        { status: 403 }
-      );
+    if (!session?.user?.isAdmin) {
+      return new NextResponse(JSON.stringify({ error: 'Yetkisiz erişim' }), {
+        status: 403,
+      });
     }
 
-    // URL'den kelime ID'sini al
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json(
-        { error: 'Kelime ID\'si gereklidir' },
-        { status: 400 }
-      );
+      return new NextResponse(JSON.stringify({ error: 'ID parametresi gerekli' }), {
+        status: 400,
+      });
     }
 
-    // Kelimeyi sil
-    await prisma.word.delete({
-      where: { id },
+    const word = await prisma.word.delete({
+      where: {
+        id: parseInt(id),
+      },
     });
 
-    return NextResponse.json({ success: true });
+    return new NextResponse(JSON.stringify(word), {
+      status: 200,
+    });
   } catch (error) {
     console.error('Kelime silme hatası:', error);
-    return NextResponse.json(
-      { error: 'Kelime silinirken bir hata oluştu' },
-      { status: 500 }
-    );
+    return new NextResponse(JSON.stringify({ error: 'Kelime silinirken bir hata oluştu' }), {
+      status: 500,
+    });
   }
 } 
