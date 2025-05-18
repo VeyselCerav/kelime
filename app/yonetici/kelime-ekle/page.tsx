@@ -10,8 +10,9 @@ export default function AddWordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    word: '',
-    meaning: '',
+    english: '',
+    turkish: '',
+    week: '1',
     example: ''
   });
 
@@ -74,31 +75,50 @@ export default function AddWordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
           <div>
-            <label htmlFor="word" className="block text-sm font-medium text-gray-700">
-              Kelime
+            <label htmlFor="english" className="block text-sm font-medium text-gray-700">
+              İngilizce Kelime
             </label>
             <input
               type="text"
-              id="word"
-              value={formData.word}
-              onChange={(e) => setFormData({ ...formData, word: e.target.value })}
+              id="english"
+              value={formData.english}
+              onChange={(e) => setFormData({ ...formData, english: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="meaning" className="block text-sm font-medium text-gray-700">
-              Anlamı
+            <label htmlFor="turkish" className="block text-sm font-medium text-gray-700">
+              Türkçe Anlamı
             </label>
             <input
               type="text"
-              id="meaning"
-              value={formData.meaning}
-              onChange={(e) => setFormData({ ...formData, meaning: e.target.value })}
+              id="turkish"
+              value={formData.turkish}
+              onChange={(e) => setFormData({ ...formData, turkish: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               required
             />
+          </div>
+
+          <div>
+            <label htmlFor="week" className="block text-sm font-medium text-gray-700">
+              Hafta
+            </label>
+            <select
+              id="week"
+              value={formData.week}
+              onChange={(e) => setFormData({ ...formData, week: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              required
+            >
+              {[...Array(52)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  Hafta {i + 1}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import prisma from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
-    // Admin kontrolü
-    const token = await getToken({ req: request as any });
+    const session = await getServerSession(authOptions);
     
-    console.log('Token:', token);
-
-    if (!token || !token.isAdmin) {
-      console.log('Yetkisiz erişim denemesi:', token);
+    if (!session?.user?.isAdmin) {
+      console.log('Yetkisiz erişim denemesi:', session?.user);
       return NextResponse.json(
         { error: 'Bu işlem için yetkiniz yok' },
         { status: 403 }
@@ -20,12 +18,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('Request body:', body);
 
-    const { word, meaning, example } = body;
+    const { english, turkish, week, example } = body;
 
     // Gerekli alanların kontrolü
-    if (!word || !meaning) {
+    if (!english || !turkish || !week) {
       return NextResponse.json(
-        { error: 'Kelime ve anlamı zorunludur' },
+        { error: 'İngilizce kelime, Türkçe anlamı ve hafta bilgisi zorunludur' },
         { status: 400 }
       );
     }
@@ -33,10 +31,11 @@ export async function POST(request: Request) {
     // Kelimeyi veritabanına ekle
     const newWord = await prisma.word.create({
       data: {
-        word,
-        meaning,
+        word: english,
+        meaning: turkish,
+        week: parseInt(week),
         example: example || '',
-        addedBy: token.username as string,
+        addedBy: session.user.username,
       },
     });
 
