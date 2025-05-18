@@ -47,7 +47,8 @@ async function main() {
         username: 'semihsacli',
         password: hashedPassword,
         email: 'haftalikkelime@gmail.com',
-        isAdmin: true
+        isAdmin: true,
+        emailVerified: new Date()
       }
     });
 
