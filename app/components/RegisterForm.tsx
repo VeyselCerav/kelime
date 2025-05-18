@@ -46,8 +46,24 @@ export default function RegisterForm() {
         throw new Error(data.error || 'Kayıt olurken bir hata oluştu');
       }
 
-      // Kayıt başarılı, giriş sayfasına yönlendir
-      router.push('/login?registered=true');
+      // Başarılı kayıt mesajını göster ve 3 saniye bekle
+      setError('');
+      const successMessage = 'Kayıt başarılı! Lütfen email adresinize gelen doğrulama mailini kontrol edin.';
+      setFormData({ username: '', email: '', password: '', confirmPassword: '' });
+      
+      // Başarı mesajını göster
+      const successDiv = document.createElement('div');
+      successDiv.className = 'bg-green-50 border-l-4 border-green-400 p-4 mb-4';
+      successDiv.innerHTML = `<p class="text-sm text-green-700">${successMessage}</p>`;
+      
+      const form = document.querySelector('form');
+      form?.insertBefore(successDiv, form.firstChild);
+
+      // 3 saniye sonra giriş sayfasına yönlendir
+      setTimeout(() => {
+        router.push('/login?registered=true');
+      }, 3000);
+
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);

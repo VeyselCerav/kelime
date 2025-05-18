@@ -12,6 +12,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const registered = searchParams.get('registered') === 'true';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +67,14 @@ export default function LoginPage() {
             Giriş Yap
           </h2>
         </div>
+
+        {registered && (
+          <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
+            <p className="text-sm text-green-700">
+              Kayıt işleminiz başarıyla tamamlandı! Lütfen email adresinize gelen doğrulama mailini kontrol edin.
+            </p>
+          </div>
+        )}
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <input type="hidden" name="remember" value="true" />
