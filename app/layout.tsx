@@ -9,7 +9,7 @@ import ClientLayout from './ClientLayout';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Kelime Öğrenme Uygulaması",
+  title: "Haftalık Kelime Öğren",
   description: "İngilizce kelime öğrenme uygulaması",
 };
 

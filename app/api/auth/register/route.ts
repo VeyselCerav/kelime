@@ -2,19 +2,9 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
-import { t } from '@/lib/i18n';
+import { sendVerificationEmail } from '@/lib/email';
 
 const prisma = new PrismaClient();
-
-// Email gönderme için transporter oluştur
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-});
 
 export async function POST(request: Request) {
   try {
@@ -32,7 +22,7 @@ export async function POST(request: Request) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: t('auth.errors.userExists') },
+        { error: 'Bu kullanıcı adı veya email zaten kullanımda' },
         { status: 400 }
       );
     }
@@ -52,37 +42,34 @@ export async function POST(request: Request) {
         password: hashedPassword,
         verificationToken,
         tokenExpiry,
+        emailVerified: null // Email doğrulanana kadar null
       },
     });
 
     // Doğrulama emaili gönder
-    const verificationUrl = `${process.env.NEXTAUTH_URL}/auth/verify?token=${verificationToken}`;
-    
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: t('auth.email.subject'),
-      html: `
-        <h1>${t('auth.email.welcome')}</h1>
-        <p>${t('auth.email.verifyText')}</p>
-        <p>${t('auth.email.tokenValidity')}</p>
-        <a href="${verificationUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">${t('auth.email.verifyButton')}</a>
-        <p>${t('auth.email.alternativeLink')}</p>
-        <p>${verificationUrl}</p>
-      `,
-    });
+    const emailSent = await sendVerificationEmail(email, verificationToken);
 
-    // Hassas bilgileri çıkar
-    const { password: _, verificationToken: __, tokenExpiry: ___, ...userWithoutSensitive } = user;
+    if (!emailSent) {
+      // Email gönderilemezse kullanıcıyı sil
+      await prisma.user.delete({
+        where: { id: user.id }
+      });
+      
+      return NextResponse.json(
+        { error: 'Doğrulama emaili gönderilemedi. Lütfen daha sonra tekrar deneyin.' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
-      ...userWithoutSensitive,
-      message: t('auth.success.registration')
+      message: 'Kayıt başarılı! Lütfen email adresinizi doğrulayın.',
+      emailSent: true
     });
+
   } catch (error) {
     console.error('Kayıt hatası:', error);
     return NextResponse.json(
-      { error: t('auth.errors.registrationError') },
+      { error: 'Kayıt sırasında bir hata oluştu' },
       { status: 500 }
     );
   }

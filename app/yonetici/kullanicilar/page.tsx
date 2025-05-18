@@ -50,6 +50,27 @@ export default function UsersPage() {
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/users/delete?id=${userId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Kullanıcı silinirken bir hata oluştu');
+      }
+
+      setUsers(users.filter(user => user.id !== userId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kullanıcı silinirken bir hata oluştu');
+    }
+  };
+
   if (status === "loading" || isLoading) {
     return <div className="flex items-center justify-center min-h-screen">
       <div className="text-xl">Yükleniyor...</div>
@@ -94,11 +115,14 @@ export default function UsersPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Kayıt Tarihi
               </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                İşlemler
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {users.map((user) => (
-              <tr key={user.id}>
+              <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   {user.username}
                 </td>
@@ -106,10 +130,26 @@ export default function UsersPage() {
                   {user.email}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {user.isAdmin ? 'Admin' : 'Kullanıcı'}
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    user.isAdmin 
+                      ? 'bg-purple-100 text-purple-800' 
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    {user.isAdmin ? 'Admin' : 'Kullanıcı'}
+                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {new Date(user.createdAt).toLocaleDateString('tr-TR')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  {!user.isAdmin && (
+                    <button
+                      onClick={() => handleDeleteUser(user.id)}
+                      className="text-red-600 hover:text-red-900 font-medium"
+                    >
+                      Sil
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
