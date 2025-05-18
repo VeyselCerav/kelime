@@ -9,7 +9,7 @@ if (!process.env.NEXTAUTH_SECRET) {
 }
 
 export const authOptions = {
-  debug: process.env.NODE_ENV === 'development',
+  debug: true,
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -57,8 +57,15 @@ export const authOptions = {
       }
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_ID || '',
-      clientSecret: process.env.GOOGLE_SECRET || '',
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      authorization: {
+        params: {
+          prompt: "select_account",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
     })
   ],
   callbacks: {
@@ -88,6 +95,31 @@ export const authOptions = {
         });
       }
       return session;
+    },
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'google') {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email }
+          });
+
+          if (!existingUser) {
+            await prisma.user.create({
+              data: {
+                email: user.email,
+                username: user.email.split('@')[0],
+                emailVerified: new Date(),
+                password: '',
+              }
+            });
+          }
+          return true;
+        } catch (error) {
+          console.error('Google signin error:', error);
+          return false;
+        }
+      }
+      return true;
     }
   },
   pages: {
