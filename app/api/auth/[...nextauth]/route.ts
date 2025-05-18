@@ -9,7 +9,7 @@ if (!process.env.NEXTAUTH_SECRET) {
 }
 
 export const authOptions = {
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -55,6 +55,10 @@ export const authOptions = {
           isAdmin: user.isAdmin
         };
       }
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_ID || '',
+      clientSecret: process.env.GOOGLE_SECRET || '',
     })
   ],
   callbacks: {
@@ -63,7 +67,7 @@ export const authOptions = {
         token.id = user.id;
         token.username = user.username;
         token.isAdmin = user.isAdmin;
-        console.log('JWT callback - token:', token);
+        console.log('JWT callback - token:', { ...token, isAdmin: user.isAdmin });
       }
       return token;
     },
@@ -75,7 +79,13 @@ export const authOptions = {
           username: token.username,
           isAdmin: token.isAdmin
         };
-        console.log('Session callback - session:', session);
+        console.log('Session callback - session:', { 
+          ...session, 
+          user: { 
+            ...session.user, 
+            isAdmin: token.isAdmin 
+          } 
+        });
       }
       return session;
     }

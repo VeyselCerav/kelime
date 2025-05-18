@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { withAuth } from "next-auth/middleware";
 
 // Korumalı rotalar
 const protectedRoutes = [
@@ -26,8 +25,9 @@ export async function middleware(request: NextRequest) {
       const token = await getToken({
         req: request,
         secret: process.env.NEXTAUTH_SECRET,
-        secureCookie: process.env.NODE_ENV === 'production'
       });
+
+      console.log('Middleware token:', token);
 
       if (!token) {
         if (pathname.startsWith('/api/')) {
@@ -44,13 +44,13 @@ export async function middleware(request: NextRequest) {
 
       // Admin sayfası için özel kontrol
       if (adminRoutes.some(route => pathname.startsWith(route))) {
-        if (token.username !== 'semihsacli') {
+        if (!token.isAdmin) {
+          console.log('Admin yetkisi reddedildi:', token);
           return NextResponse.redirect(new URL('/', request.url));
         }
       }
 
-      const response = NextResponse.next();
-      return response;
+      return NextResponse.next();
     } catch (error) {
       console.error('Middleware error:', error);
       return NextResponse.redirect(new URL('/login', request.url));
@@ -68,23 +68,9 @@ export const config = {
     '/api/daily-goal/:path*',
     '/api/progress/:path*',
     '/profile/:path*',
+    '/yonetici',
     '/yonetici/:path*',
     '/api/words/create/:path*',
     '/api/words/delete/:path*'
   ],
-};
-
-export default withAuth(
-  function middleware(req) {
-    return;
-  },
-  {
-    callbacks: {
-      authorized: ({ token }) => !!token
-    },
-  }
-);
-
-export const config = {
-  matcher: ["/yonetici"]
 }; 
