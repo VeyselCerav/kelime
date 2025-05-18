@@ -14,14 +14,15 @@ export async function GET() {
     }
 
     // Genel istatistikleri al
-    const [totalUsers, totalWords, totalQuizzes, totalPractices] = await Promise.all([
+    const [totalUsers, totalWords, totalLearnedWords, totalUnlearnedWords, totalDailyGoals] = await Promise.all([
       prisma.user.count(),
       prisma.word.count(),
-      prisma.quiz.count(),
-      prisma.practice.count(),
+      prisma.learnedWord.count(),
+      prisma.unlearnedWord.count(),
+      prisma.dailyGoal.count(),
     ]);
 
-    // Haftalık istatistikleri al
+    // Haftalık kelime istatistiklerini al
     const weeklyStats = await prisma.word.groupBy({
       by: ['week'],
       _count: {
@@ -32,33 +33,43 @@ export async function GET() {
       },
     });
 
-    // Quiz istatistiklerini haftalara göre grupla
-    const weeklyQuizStats = await prisma.quiz.groupBy({
-      by: ['week'],
+    // Haftalık öğrenilen kelime istatistiklerini al
+    const weeklyLearnedStats = await prisma.learnedWord.groupBy({
+      by: ['createdAt'],
       _count: {
         id: true,
       },
       orderBy: {
-        week: 'asc',
+        createdAt: 'asc',
       },
     });
 
     // Haftalık istatistikleri birleştir
     const combinedWeeklyStats = weeklyStats.map((weekStat) => {
-      const quizStat = weeklyQuizStats.find((q) => q.week === weekStat.week);
       return {
         week: weekStat.week,
         wordCount: weekStat._count.id,
-        quizCount: quizStat ? quizStat._count.id : 0,
       };
     });
+
+    // Son 7 günün öğrenilen kelime istatistikleri
+    const last7DaysStats = weeklyLearnedStats
+      .filter(stat => {
+        const date = new Date(stat.createdAt);
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        return date >= sevenDaysAgo;
+      })
+      .reduce((acc, stat) => acc + stat._count.id, 0);
 
     return new NextResponse(JSON.stringify({
       totalUsers,
       totalWords,
-      totalQuizzes,
-      totalPractices,
+      totalLearnedWords,
+      totalUnlearnedWords,
+      totalDailyGoals,
       weeklyStats: combinedWeeklyStats,
+      last7DaysLearnedWords: last7DaysStats,
     }), {
       status: 200,
     });

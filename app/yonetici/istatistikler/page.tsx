@@ -7,13 +7,14 @@ import { useRouter } from 'next/navigation';
 interface Statistics {
   totalUsers: number;
   totalWords: number;
-  totalQuizzes: number;
-  totalPractices: number;
+  totalLearnedWords: number;
+  totalUnlearnedWords: number;
+  totalDailyGoals: number;
   weeklyStats: {
     week: number;
     wordCount: number;
-    quizCount: number;
   }[];
+  last7DaysLearnedWords: number;
 }
 
 export default function StatisticsPage() {
@@ -96,12 +97,20 @@ export default function StatisticsPage() {
                 <span className="font-semibold">{stats.totalWords}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Toplam Quiz:</span>
-                <span className="font-semibold">{stats.totalQuizzes}</span>
+                <span className="text-gray-600">Öğrenilen Kelimeler:</span>
+                <span className="font-semibold">{stats.totalLearnedWords}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Toplam Pratik:</span>
-                <span className="font-semibold">{stats.totalPractices}</span>
+                <span className="text-gray-600">Ezberlenemeyen Kelimeler:</span>
+                <span className="font-semibold">{stats.totalUnlearnedWords}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Tamamlanan Günlük Hedefler:</span>
+                <span className="font-semibold">{stats.totalDailyGoals}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Son 7 Günde Öğrenilen:</span>
+                <span className="font-semibold">{stats.last7DaysLearnedWords}</span>
               </div>
             </div>
           </div>
@@ -115,10 +124,6 @@ export default function StatisticsPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Kelime Sayısı:</span>
                     <span>{week.wordCount}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Quiz Sayısı:</span>
-                    <span>{week.quizCount}</span>
                   </div>
                 </div>
               ))}
