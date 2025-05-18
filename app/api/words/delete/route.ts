@@ -1,45 +1,41 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getToken } from 'next-auth/jwt';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function DELETE(request: Request) {
   try {
-    const token = await getToken({ req: request });
+    // Admin kontrolü
+    const token = await getToken({ req: request as any });
     
-    if (!token || token.username !== 'semihsacli') {
+    if (!token || !token.isAdmin) {
       return NextResponse.json(
         { error: 'Bu işlem için yetkiniz yok' },
         { status: 403 }
       );
     }
 
-    const { wordId } = await request.json();
-    
-    if (!wordId) {
+    // URL'den kelime ID'sini al
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
       return NextResponse.json(
         { error: 'Kelime ID\'si gereklidir' },
         { status: 400 }
       );
     }
 
-    await prisma.$connect();
-    
+    // Kelimeyi sil
     await prisma.word.delete({
-      where: {
-        id: parseInt(wordId)
-      }
+      where: { id },
     });
 
-    return NextResponse.json({ message: 'Kelime başarıyla silindi' });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Kelime silme hatası:', error);
     return NextResponse.json(
-      { error: 'Kelime silinirken bir hata oluştu: ' + error.message },
+      { error: 'Kelime silinirken bir hata oluştu' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 
