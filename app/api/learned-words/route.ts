@@ -12,7 +12,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Oturum açmanız gerekiyor' }, { status: 401 });
     }
 
-    const userId = typeof session.user.id === 'string' ? parseInt(session.user.id) : session.user.id;
+    // Google ile giriş yapan kullanıcılar için id'yi integer'a dönüştür
+    let userId: number;
+    try {
+      userId = parseInt(session.user.id);
+      if (isNaN(userId)) {
+        throw new Error('Geçersiz kullanıcı ID');
+      }
+    } catch (error) {
+      return NextResponse.json({ error: 'Geçersiz kullanıcı ID' }, { status: 400 });
+    }
+
     const { wordId, isLearned } = await request.json();
 
     if (wordId === undefined) {
@@ -174,9 +184,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Kelime durumu güncelleme hatası:', error);
+    console.error('Kelime işaretleme hatası:', error);
     return NextResponse.json(
-      { error: 'Kelime durumu güncellenirken bir hata oluştu' },
+      { error: 'Kelime işaretlenirken bir hata oluştu' },
       { status: 500 }
     );
   }

@@ -68,7 +68,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Oturum açmanız gerekiyor' }, { status: 401 });
     }
 
-    const userId = typeof session.user.id === 'string' ? parseInt(session.user.id) : session.user.id;
+    // Google ile giriş yapan kullanıcılar için id'yi integer'a dönüştür
+    let userId: number;
+    try {
+      userId = parseInt(session.user.id);
+      if (isNaN(userId)) {
+        throw new Error('Geçersiz kullanıcı ID');
+      }
+    } catch (error) {
+      return NextResponse.json({ error: 'Geçersiz kullanıcı ID' }, { status: 400 });
+    }
+
     const { wordId } = await request.json();
 
     if (!wordId) {
@@ -144,7 +154,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Ezberlenemeyen kelime ekleme hatası:', error);
     return NextResponse.json(
-      { error: 'Kelime eklenirken bir hata oluştu.' },
+      { error: 'Kelime eklenirken bir hata oluştu' },
       { status: 500 }
     );
   }
