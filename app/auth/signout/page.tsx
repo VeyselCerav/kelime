@@ -5,10 +5,13 @@ import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
 export default function SignOutPage() {
+  const [isConfirmed, setIsConfirmed] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const router = useRouter();
 
   useEffect(() => {
+    if (!isConfirmed) return;
+
     // Otomatik çıkış yap
     signOut({ redirect: false });
 
@@ -25,7 +28,37 @@ export default function SignOutPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [router]);
+  }, [router, isConfirmed]);
+
+  if (!isConfirmed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100">
+        <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-2xl shadow-xl transform transition-all">
+          <div className="text-center">
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900 mb-6">
+              Çıkış yapmak istediğinize emin misiniz?
+            </h2>
+            
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setIsConfirmed(true)}
+                className="flex-1 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+              >
+                Evet, Çıkış Yap
+              </button>
+              
+              <button
+                onClick={() => router.back()}
+                className="flex-1 py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+              >
+                İptal
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100">
