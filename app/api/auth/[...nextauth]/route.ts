@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error('Please provide process.env.NEXTAUTH_SECRET');
@@ -104,12 +105,30 @@ export const authOptions = {
           });
 
           if (!existingUser) {
+            // Rastgele güvenli bir şifre oluştur
+            const randomPassword = crypto.randomBytes(32).toString('hex');
+            const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+            // Kullanıcı adını email'den oluştur ve benzersiz olmasını sağla
+            let baseUsername = user.email.split('@')[0];
+            let username = baseUsername;
+            let counter = 1;
+
+            // Kullanıcı adının benzersiz olmasını sağla
+            while (await prisma.user.findUnique({ where: { username } })) {
+              username = `${baseUsername}${counter}`;
+              counter++;
+            }
+
+            // Yeni kullanıcı oluştur
             await prisma.user.create({
               data: {
                 email: user.email,
-                username: user.email.split('@')[0],
-                emailVerified: new Date(),
-                password: '',
+                username: username,
+                password: hashedPassword,
+                emailVerified: new Date(), // Google ile giriş yapanlar için otomatik doğrula
+                verificationToken: null,
+                tokenExpiry: null,
               }
             });
           }
