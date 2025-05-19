@@ -20,7 +20,7 @@ export default function VerifyPage() {
           return;
         }
 
-        const response = await fetch(`/api/auth/verify?token=${token}`);
+        const response = await fetch(`/api/auth/verify?token=${encodeURIComponent(token)}`);
         const data = await response.json();
         
         if (response.ok) {
@@ -33,8 +33,10 @@ export default function VerifyPage() {
         } else {
           setStatus('error');
           setMessage(data.error || 'Doğrulama işlemi başarısız oldu.');
+          console.error('Doğrulama hatası:', data);
         }
       } catch (error) {
+        console.error('Doğrulama işlemi hatası:', error);
         setStatus('error');
         setMessage('Bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
       }

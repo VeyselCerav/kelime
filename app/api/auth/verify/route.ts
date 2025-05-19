@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        emailVerified: new Date(),
+        emailVerified: true,
         verificationToken: null,
         tokenExpiry: null,
       },
@@ -55,5 +55,7 @@ export async function GET(request: Request) {
       { error: 'Doğrulama işlemi sırasında bir hata oluştu' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 } 
