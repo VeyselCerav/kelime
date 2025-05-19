@@ -9,6 +9,12 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendVerificationEmail(email: string, token: string) {
+  console.log('Email gönderme işlemi başladı:', {
+    to: email,
+    from: process.env.EMAIL_USER,
+    token: token
+  });
+
   const verificationUrl = `${process.env.NEXTAUTH_URL}/auth/verify?token=${token}`;
 
   const mailOptions = {
@@ -40,7 +46,9 @@ export async function sendVerificationEmail(email: string, token: string) {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    console.log('Email gönderiliyor...');
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email gönderildi:', info);
     return true;
   } catch (error) {
     console.error('Email gönderme hatası:', error);

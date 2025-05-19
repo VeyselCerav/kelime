@@ -14,14 +14,14 @@ async function main() {
         password: hashedPassword,
         email: 'haftalikkelime@gmail.com',
         isAdmin: true,
-        emailVerified: new Date()
+        emailVerified: true
       },
       create: {
         username: 'semihsacli',
         password: hashedPassword,
         email: 'haftalikkelime@gmail.com',
         isAdmin: true,
-        emailVerified: new Date()
+        emailVerified: true
       }
     });
 
