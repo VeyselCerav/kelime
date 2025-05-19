@@ -70,12 +70,25 @@ export const authOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
-        token.id = user.id;
-        token.username = user.username;
-        token.isAdmin = user.isAdmin;
-        console.log('JWT callback - token:', { ...token, isAdmin: user.isAdmin });
+        // Google ile giriş yapıldığında veya normal giriş yapıldığında
+        if (account?.provider === 'google') {
+          // Google ile giriş yapan kullanıcıyı bul veya oluştur
+          const dbUser = await prisma.user.findUnique({
+            where: { email: user.email }
+          });
+          if (dbUser) {
+            token.id = dbUser.id.toString();
+            token.username = dbUser.username;
+            token.isAdmin = dbUser.isAdmin;
+          }
+        } else {
+          // Normal giriş
+          token.id = user.id;
+          token.username = user.username;
+          token.isAdmin = user.isAdmin;
+        }
       }
       return token;
     },
@@ -87,24 +100,17 @@ export const authOptions = {
           username: token.username,
           isAdmin: token.isAdmin
         };
-        console.log('Session callback - session:', { 
-          ...session, 
-          user: { 
-            ...session.user, 
-            isAdmin: token.isAdmin 
-          } 
-        });
       }
       return session;
     },
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google') {
         try {
-          const existingUser = await prisma.user.findUnique({
+          let dbUser = await prisma.user.findUnique({
             where: { email: user.email }
           });
 
-          if (!existingUser) {
+          if (!dbUser) {
             // Rastgele güvenli bir şifre oluştur
             const randomPassword = crypto.randomBytes(32).toString('hex');
             const hashedPassword = await bcrypt.hash(randomPassword, 10);
@@ -121,7 +127,7 @@ export const authOptions = {
             }
 
             // Yeni kullanıcı oluştur
-            await prisma.user.create({
+            dbUser = await prisma.user.create({
               data: {
                 email: user.email,
                 username: username,
@@ -131,6 +137,14 @@ export const authOptions = {
                 tokenExpiry: null,
               }
             });
+
+            // user nesnesini güncelle
+            user.id = dbUser.id.toString();
+            user.username = dbUser.username;
+          } else {
+            // Mevcut kullanıcı bilgilerini user nesnesine ekle
+            user.id = dbUser.id.toString();
+            user.username = dbUser.username;
           }
           return true;
         } catch (error) {
@@ -146,7 +160,7 @@ export const authOptions = {
     error: '/auth/error',
   },
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 gün
   },
   secret: process.env.NEXTAUTH_SECRET,
