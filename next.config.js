@@ -14,7 +14,10 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'bcrypt']
+  },
+  env: {
+    REGION: 'eu-central-1' 
   }
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig;
