@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 const DISMISS_KEY = 'yds-pwa-install-dismissed';
+const OPEN_KEY = 'yds-pwa-install-open';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -23,53 +25,85 @@ function isStandalone(): boolean {
   );
 }
 
-/** İlk ziyarette ana ekrana ekleme teşviki */
+/** İlk ziyarette ana ekrana ekleme — kapanana kadar sabit kalır */
 export default function InstallPrompt() {
+  const pathname = usePathname();
+  const deferredRef = useRef<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
+  const [hasNativePrompt, setHasNativePrompt] = useState(false);
   const [showIosSteps, setShowIosSteps] = useState(false);
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
-    null
-  );
+
+  const hasBottomNav =
+    !pathname.startsWith('/login') &&
+    !pathname.startsWith('/register') &&
+    !pathname.startsWith('/auth') &&
+    !pathname.startsWith('/yonetici');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (isStandalone()) return;
+    if (isStandalone()) {
+      setVisible(false);
+      return;
+    }
     if (localStorage.getItem(DISMISS_KEY) === '1') return;
+
+    // Remount olsa bile açık kalsın
+    if (sessionStorage.getItem(OPEN_KEY) === '1') {
+      setVisible(true);
+      if (isIos()) setShowIosSteps(true);
+    }
+
+    const open = () => {
+      sessionStorage.setItem(OPEN_KEY, '1');
+      setVisible(true);
+      if (isIos()) setShowIosSteps(true);
+    };
 
     const onBip = (e: Event) => {
       e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-      setVisible(true);
+      deferredRef.current = e as BeforeInstallPromptEvent;
+      setHasNativePrompt(true);
+      open();
     };
+
     window.addEventListener('beforeinstallprompt', onBip);
+
+    const onInstalled = () => {
+      localStorage.setItem(DISMISS_KEY, '1');
+      sessionStorage.removeItem(OPEN_KEY);
+      setVisible(false);
+    };
+    window.addEventListener('appinstalled', onInstalled);
 
     const t = window.setTimeout(() => {
       if (isStandalone()) return;
       if (localStorage.getItem(DISMISS_KEY) === '1') return;
-      setVisible(true);
-      if (isIos()) setShowIosSteps(true);
-    }, 2200);
+      open();
+    }, 1800);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', onBip);
+      window.removeEventListener('appinstalled', onInstalled);
       window.clearTimeout(t);
     };
   }, []);
 
   const dismiss = () => {
     localStorage.setItem(DISMISS_KEY, '1');
+    sessionStorage.removeItem(OPEN_KEY);
     setVisible(false);
   };
 
   const install = async () => {
+    const deferred = deferredRef.current;
     if (deferred) {
       await deferred.prompt();
       const choice = await deferred.userChoice;
       if (choice.outcome === 'accepted') {
-        localStorage.setItem(DISMISS_KEY, '1');
-        setVisible(false);
+        dismiss();
       }
-      setDeferred(null);
+      deferredRef.current = null;
+      setHasNativePrompt(false);
       return;
     }
     setShowIosSteps(true);
@@ -78,8 +112,16 @@ export default function InstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[80] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none">
-      <div className="pointer-events-auto mx-auto max-w-md rounded-2xl border border-outline-variant/40 bg-surface-container-lowest p-4 shadow-[0_-8px_30px_rgba(16,28,44,0.12)]">
+    <div
+      className="pointer-events-none fixed inset-x-0 z-[100] px-4"
+      style={{
+        // Alt menünün üstünde dursun — kaybolmuş gibi görünmesin
+        bottom: hasBottomNav
+          ? 'calc(5.5rem + env(safe-area-inset-bottom, 0px))'
+          : 'calc(1rem + env(safe-area-inset-bottom, 0px))',
+      }}
+    >
+      <div className="pointer-events-auto mx-auto max-w-md rounded-2xl border border-outline-variant/50 bg-surface-container-lowest p-4 shadow-[0_8px_32px_rgba(16,28,44,0.18)]">
         <div className="flex gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary-container/30">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -91,10 +133,18 @@ export default function InstallPrompt() {
             </p>
             <p className="mt-0.5 text-sm text-on-surface-variant">
               {showIosSteps
-                ? 'Safari’de Paylaş menüsünden “Ana Ekrana Ekle”.'
+                ? 'Safari’de Paylaş → “Ana Ekrana Ekle”.'
                 : 'Kısayol ekle; telefonunda uygulama gibi açılsın.'}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container"
+            aria-label="Kapat"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
         </div>
 
         {showIosSteps && (
@@ -118,7 +168,7 @@ export default function InstallPrompt() {
               onClick={() => void install()}
               className="btn-tactile flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-on-primary"
             >
-              {deferred ? 'Ekle' : 'Nasıl eklerim?'}
+              {hasNativePrompt ? 'Ekle' : 'Nasıl eklerim?'}
             </button>
           )}
           <button
