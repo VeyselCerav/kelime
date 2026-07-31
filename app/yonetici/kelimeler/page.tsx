@@ -8,7 +8,8 @@ interface Word {
   id: string;
   english: string;
   turkish: string;
-  week: number;
+  moduleId: number;
+  module?: { name: string; slug: string };
   addedBy: string;
   createdAt: string;
 }
@@ -110,7 +111,7 @@ export default function WordsPage() {
                 Anlam
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Hafta
+                Modül
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Ekleyen
@@ -128,7 +129,9 @@ export default function WordsPage() {
               <tr key={word.id}>
                 <td className="px-6 py-4 whitespace-nowrap">{word.english}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{word.turkish}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{word.week}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {word.module?.name || word.moduleId}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">{word.addedBy}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {new Date(word.createdAt).toLocaleDateString('tr-TR')}

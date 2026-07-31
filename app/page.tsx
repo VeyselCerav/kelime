@@ -1,195 +1,202 @@
-import Image from "next/image";
-import Countdown from './components/Countdown';
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import ModulePicker from './components/ModulePicker';
+import BadgeShowcase from './components/BadgeShowcase';
+import { useModule } from './context/ModuleContext';
+import { useBadgeContext } from './context/BadgeContext';
+
+interface Word {
+  id: number;
+  english: string;
+  turkish: string;
+}
 
 export default function Home() {
+  const { data: session } = useSession();
+  const { selectedModule, selectedModuleId } = useModule();
+  const { badges, learnedCount } = useBadgeContext();
+  const [words, setWords] = useState<Word[]>([]);
+  const [goalTarget] = useState(20);
+
+  useEffect(() => {
+    if (!selectedModuleId) return;
+    fetch(`/api/words?moduleId=${selectedModuleId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setWords(data);
+      })
+      .catch(console.error);
+  }, [selectedModuleId]);
+
+  const dailyDone = Math.min(learnedCount % goalTarget || 0, goalTarget);
+  const wordOfDay = useMemo(() => {
+    if (!words.length) return null;
+    const day = new Date();
+    const idx =
+      (day.getFullYear() * 1000 + day.getMonth() * 50 + day.getDate()) %
+      words.length;
+    return words[idx];
+  }, [words]);
+
+  const progressPct = Math.round((dailyDone / goalTarget) * 100);
+  const circumference = 2 * Math.PI * 40;
+  const offset = circumference - (progressPct / 100) * circumference;
+
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Günaydın';
+    if (h < 18) return 'İyi günler';
+    return 'İyi akşamlar';
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Hero Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="flex flex-col items-center justify-center gap-8 max-w-4xl mx-auto">
-          <div className="text-center space-y-4">
-            <h1 className="text-6xl font-bold text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              YDS Kelime Öğrenme
-            </h1>
-            <p className="text-xl text-base-content/70 text-center max-w-2xl mx-auto leading-relaxed">
-              YDS sınavına hazırlanırken kelime dağarcığınızı sistemli bir şekilde geliştirin. 
-              Haftalık kelime paketleri ve interaktif testlerle başarıya ulaşın.
+    <div className="app-shell space-y-8 py-4">
+      <section className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-on-surface-variant">
+            {greeting()}
+            {session?.user?.name ? ',' : ''}
+          </p>
+          <h1 className="font-display text-2xl font-bold text-primary">
+            {session?.user?.name ||
+              session?.user?.username ||
+              session?.user?.email ||
+              'Kullanıcı'}
+          </h1>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 font-display text-xl font-semibold text-on-surface">
+          Modül Seç
+        </h2>
+        <ModulePicker />
+      </section>
+
+      <section className="paper-texture soft-shadow flex items-center justify-between rounded-card border border-outline-variant/30 p-6">
+        <div className="space-y-2">
+          <h2 className="font-display text-xl font-semibold text-on-surface">
+            Günlük Hedef
+          </h2>
+          <p className="max-w-[180px] text-sm text-on-surface-variant">
+            Bugün {dailyDone}/{goalTarget} kelime. Devam et!
+          </p>
+          <p className="text-xs font-medium text-primary">
+            {selectedModule?.name || 'Modül seçin'}
+          </p>
+        </div>
+        <div className="relative flex items-center justify-center">
+          <svg className="h-24 w-24" viewBox="0 0 100 100">
+            <circle
+              className="text-surface-container-high"
+              cx="50"
+              cy="50"
+              fill="transparent"
+              r="40"
+              stroke="currentColor"
+              strokeWidth="8"
+            />
+            <circle
+              className="progress-ring__circle text-primary-container"
+              cx="50"
+              cy="50"
+              fill="transparent"
+              r="40"
+              stroke="currentColor"
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset={offset}
+            />
+          </svg>
+          <span className="absolute font-display text-xl font-semibold text-primary">
+            {progressPct}%
+          </span>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 gap-4">
+        <Link
+          href="/flashcards"
+          className="btn-tactile flex h-48 flex-col justify-between rounded-card bg-secondary-container p-6 shadow-soft"
+        >
+          <div className="self-start rounded-xl bg-white/30 p-2">
+            <span className="material-symbols-outlined text-on-secondary-container">
+              book
+            </span>
+          </div>
+          <div>
+            <h3 className="font-display text-xl font-semibold text-on-secondary-container">
+              Öğrenmeye Başla
+            </h3>
+            <p className="text-sm text-on-secondary-container/80">
+              Yeni kelimeler
             </p>
           </div>
-
-          <Countdown />
-
-          {/* Feature Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full mt-12">
-            <a
-              href="/flashcards"
-              className="group relative overflow-hidden rounded-2xl bg-white p-8 border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-            >
-              <div className="relative">
-                <h2 className="text-2xl font-bold text-primary mb-4 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                  Kelime Kartları
-                </h2>
-                <p className="text-base-content/70 leading-relaxed">
-                  İnteraktif kelime kartlarıyla etkili öğrenme deneyimi yaşayın. 
-                  Her hafta yeni kelimelerle İngilizce-Türkçe pratik yapın.
-                </p>
-              </div>
-            </a>
-
-            <a
-              href="/quiz"
-              className="group relative overflow-hidden rounded-2xl bg-white p-8 border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-            >
-              <div className="relative">
-                <h2 className="text-2xl font-bold text-secondary mb-4 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                  Kelime Testi
-                </h2>
-                <p className="text-base-content/70 leading-relaxed">
-                  Öğrendiğiniz kelimeleri pekiştirin ve kendinizi değerlendirin. 
-                  Çoktan seçmeli sorularla bilginizi test edin.
-                </p>
-              </div>
-            </a>
+        </Link>
+        <Link
+          href="/quiz"
+          className="btn-tactile flex h-48 flex-col justify-between rounded-card bg-primary-container p-6 shadow-soft"
+        >
+          <div className="self-start rounded-xl bg-white/30 p-2">
+            <span className="material-symbols-outlined text-on-primary-container">
+              quiz
+            </span>
           </div>
-
-          {/* Membership Features Table */}
-          <div className="mt-16 w-full">
-            <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">
-              Üyelik Özellikleri
-            </h2>
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Özellikler</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-500">Üye Olmayan</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-primary">Üye</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  <tr>
-                    <td className="px-6 py-4 text-sm text-gray-900">Kelime Kartları</td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 text-sm text-gray-900">Kelime Testi</td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 text-sm text-gray-900">Ezberlenemeyen Kelimeler Listesi</td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 text-sm text-gray-900">Kelime İlerleme Takibi</td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 text-sm text-gray-900">Özelleştirilmiş Tekrar Listesi</td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Call to Action */}
-            <div className="mt-8 text-center">
-              <Link 
-                href="/register" 
-                className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary/90 transition-colors"
-              >
-                Hemen Üye Ol
-              </Link>
-              <p className="mt-2 text-sm text-gray-500">
-                Zaten üye misiniz? <Link href="/login" className="text-primary hover:text-primary/90">Giriş yapın</Link>
-              </p>
-            </div>
+          <div>
+            <h3 className="font-display text-xl font-semibold text-on-primary-container">
+              Quiz Çöz
+            </h3>
+            <p className="text-sm text-on-primary-container/80">
+              Bilgini test et
+            </p>
           </div>
+        </Link>
+      </section>
 
-          {/* Features Section */}
-          <div className="mt-16 w-full">
-            <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
-              Neden YDS Kelime?
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="flex flex-col items-center text-center p-6">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <h3 className="text-xl font-semibold mb-2">Hızlı Öğrenme</h3>
-                <p className="text-base-content/70">Haftalık kelime paketleriyle sistemli ve hızlı öğrenme</p>
-              </div>
-              
-              <div className="flex flex-col items-center text-center p-6">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-secondary mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 className="text-xl font-semibold mb-2">Etkili Tekrar</h3>
-                <p className="text-base-content/70">İnteraktif testlerle kalıcı öğrenme</p>
-              </div>
-
-              <div className="flex flex-col items-center text-center p-6">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 className="text-xl font-semibold mb-2">Zaman Tasarrufu</h3>
-                <p className="text-base-content/70">Planlı çalışmayla verimli öğrenme</p>
-              </div>
-            </div>
-          </div>
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-semibold text-on-surface">
+            Günün Kelimesi
+          </h2>
+          <span className="rounded-full bg-surface-container px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-outline">
+            {new Date().toLocaleDateString('tr-TR', {
+              day: 'numeric',
+              month: 'long',
+            })}
+          </span>
         </div>
-      </div>
+        <div className="paper-texture soft-shadow relative overflow-hidden rounded-card border border-outline-variant/40 p-6">
+          {wordOfDay ? (
+            <>
+              <h3 className="font-display text-4xl font-bold italic text-primary">
+                {wordOfDay.english}
+              </h3>
+              <div className="my-4 h-px w-12 bg-outline-variant/50" />
+              <p className="text-lg leading-relaxed text-on-surface-variant">
+                {wordOfDay.turkish}
+              </p>
+            </>
+          ) : (
+            <p className="text-on-surface-variant">Kelime yükleniyor…</p>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-3 pb-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-semibold text-on-surface">
+            Başarı Rozetleri
+          </h2>
+          <Link href="/stats" className="text-xs font-bold text-primary hover:underline">
+            Tümü
+          </Link>
+        </div>
+        <BadgeShowcase badges={badges} compact />
+      </section>
     </div>
   );
 }

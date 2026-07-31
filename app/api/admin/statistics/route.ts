@@ -13,48 +13,46 @@ export async function GET() {
       });
     }
 
-    // Genel istatistikleri al
-    const [totalUsers, totalWords, totalLearnedWords, totalUnlearnedWords, totalDailyGoals] = await Promise.all([
+    const [
+      totalUsers,
+      totalWords,
+      totalLearnedWords,
+      totalUnlearnedWords,
+      totalDailyGoals,
+      moduleStats,
+      weeklyLearnedStats,
+    ] = await Promise.all([
       prisma.user.count(),
       prisma.word.count(),
       prisma.learnedWord.count(),
       prisma.unlearnedWord.count(),
       prisma.dailyGoal.count(),
+      prisma.word.groupBy({
+        by: ['moduleId'],
+        _count: { id: true },
+        orderBy: { moduleId: 'asc' },
+      }),
+      prisma.learnedWord.groupBy({
+        by: ['createdAt'],
+        _count: { id: true },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
 
-    // Haftalık kelime istatistiklerini al
-    const weeklyStats = await prisma.word.groupBy({
-      by: ['week'],
-      _count: {
-        id: true,
-      },
-      orderBy: {
-        week: 'asc',
-      },
+    const modules = await prisma.module.findMany({
+      orderBy: { sortOrder: 'asc' },
     });
 
-    // Haftalık öğrenilen kelime istatistiklerini al
-    const weeklyLearnedStats = await prisma.learnedWord.groupBy({
-      by: ['createdAt'],
-      _count: {
-        id: true,
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
+    const moduleMap = Object.fromEntries(modules.map((m) => [m.id, m]));
 
-    // Haftalık istatistikleri birleştir
-    const combinedWeeklyStats = weeklyStats.map((weekStat) => {
-      return {
-        week: weekStat.week,
-        wordCount: weekStat._count.id,
-      };
-    });
+    const combinedModuleStats = moduleStats.map((stat) => ({
+      moduleId: stat.moduleId,
+      moduleName: moduleMap[stat.moduleId]?.name || `Modül ${stat.moduleId}`,
+      wordCount: stat._count.id,
+    }));
 
-    // Son 7 günün öğrenilen kelime istatistikleri
     const last7DaysStats = weeklyLearnedStats
-      .filter(stat => {
+      .filter((stat) => {
         const date = new Date(stat.createdAt);
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -62,21 +60,27 @@ export async function GET() {
       })
       .reduce((acc, stat) => acc + stat._count.id, 0);
 
-    return new NextResponse(JSON.stringify({
-      totalUsers,
-      totalWords,
-      totalLearnedWords,
-      totalUnlearnedWords,
-      totalDailyGoals,
-      weeklyStats: combinedWeeklyStats,
-      last7DaysLearnedWords: last7DaysStats,
-    }), {
-      status: 200,
-    });
+    return new NextResponse(
+      JSON.stringify({
+        totalUsers,
+        totalWords,
+        totalLearnedWords,
+        totalUnlearnedWords,
+        totalDailyGoals,
+        moduleStats: combinedModuleStats,
+        weeklyStats: combinedModuleStats.map((m) => ({
+          week: m.moduleId,
+          wordCount: m.wordCount,
+          label: m.moduleName,
+        })),
+        last7DaysLearnedWords: last7DaysStats,
+      }),
+      { status: 200 }
+    );
   } catch (error) {
     console.error('İstatistikler alınırken hata:', error);
     return new NextResponse(JSON.stringify({ error: 'Sunucu hatası' }), {
       status: 500,
     });
   }
-} 
+}

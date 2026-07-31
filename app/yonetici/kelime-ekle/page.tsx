@@ -1,24 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+
+interface ModuleOption {
+  id: number;
+  name: string;
+  slug: string;
+}
 
 export default function AddWordPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [modules, setModules] = useState<ModuleOption[]>([]);
   const [formData, setFormData] = useState({
     english: '',
     turkish: '',
-    week: '1'
+    moduleId: '',
   });
 
-  if (status === "loading") {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="text-xl">Yükleniyor...</div>
-    </div>;
+  useEffect(() => {
+    fetch('/api/modules')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setModules(data);
+          if (data[0]) {
+            setFormData((f) => ({ ...f, moduleId: String(data[0].id) }));
+          }
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-xl">Yükleniyor...</div>
+      </div>
+    );
   }
 
   if (!session || !session.user?.isAdmin) {
@@ -34,10 +57,12 @@ export default function AddWordPage() {
     try {
       const response = await fetch('/api/words/create', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          english: formData.english,
+          turkish: formData.turkish,
+          moduleId: formData.moduleId,
+        }),
       });
 
       if (!response.ok) {
@@ -46,8 +71,8 @@ export default function AddWordPage() {
       }
 
       router.push('/yonetici/kelimeler');
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Bir hata oluştu');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
@@ -55,24 +80,22 @@ export default function AddWordPage() {
 
   return (
     <div className="p-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Yeni Kelime Ekle</h1>
           <button
             onClick={() => router.push('/yonetici')}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
+            className="rounded bg-gray-500 px-4 py-2 text-white transition hover:bg-gray-600"
           >
             Geri Dön
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
-            {error}
-          </div>
+          <div className="mb-4 rounded bg-red-100 p-4 text-red-700">{error}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
+        <form onSubmit={handleSubmit} className="space-y-6 rounded-lg bg-white p-6 shadow">
           <div>
             <label htmlFor="english" className="block text-sm font-medium text-gray-700">
               İngilizce Kelime
@@ -82,7 +105,7 @@ export default function AddWordPage() {
               id="english"
               value={formData.english}
               onChange={(e) => setFormData({ ...formData, english: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
               required
             />
           </div>
@@ -96,25 +119,25 @@ export default function AddWordPage() {
               id="turkish"
               value={formData.turkish}
               onChange={(e) => setFormData({ ...formData, turkish: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="week" className="block text-sm font-medium text-gray-700">
-              Hafta
+            <label htmlFor="moduleId" className="block text-sm font-medium text-gray-700">
+              Modül
             </label>
             <select
-              id="week"
-              value={formData.week}
-              onChange={(e) => setFormData({ ...formData, week: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              id="moduleId"
+              value={formData.moduleId}
+              onChange={(e) => setFormData({ ...formData, moduleId: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
               required
             >
-              {[...Array(52)].map((_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  Hafta {i + 1}
+              {modules.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
                 </option>
               ))}
             </select>
@@ -124,7 +147,7 @@ export default function AddWordPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition disabled:opacity-50"
+              className="rounded bg-primary px-4 py-2 text-white transition disabled:opacity-50"
             >
               {isLoading ? 'Ekleniyor...' : 'Kelime Ekle'}
             </button>
@@ -133,4 +156,4 @@ export default function AddWordPage() {
       </div>
     </div>
   );
-} 
+}

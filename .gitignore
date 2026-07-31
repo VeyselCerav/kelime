@@ -27,6 +27,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+env
 
 # vercel
 .vercel
@@ -35,4 +36,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
+# local icon source pack (web icons live in public/ + app/)
+AppIcons/
+main.ico
+public/app-icon-source.png
+
+# large local word dumps (already imported to DB)
+dataOne.json
+dataTwo.json
+dataThree.json
+ux.txt

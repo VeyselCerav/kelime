@@ -1,17 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWeek } from '../context/WeekContext';
-import { useSearchParams } from 'next/navigation';
-import Quiz from '../components/Quiz';
 import { useSession } from 'next-auth/react';
-
-interface Word {
-  id: string;
-  english: string;
-  turkish: string;
-  week: number;
-}
+import Quiz from '../components/Quiz';
+import StudyScopePicker from '../components/StudyScopePicker';
+import { useModule } from '../context/ModuleContext';
 
 interface Question {
   id: number;
@@ -26,30 +19,29 @@ export default function QuizPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const { data: session } = useSession();
-  const { selectedWeek } = useWeek();
-  const searchParams = useSearchParams();
-  const mode = searchParams.get('mode');
+  const { selectedModuleId, selectedGroup, selectedGroupIndex } = useModule();
 
   useEffect(() => {
+    if (!selectedModuleId || !selectedGroupIndex) return;
+
     const fetchQuestions = async () => {
+      setIsLoading(true);
+      setError('');
       try {
         const url = new URL('/api/quiz', window.location.origin);
-        if (selectedWeek) {
-          url.searchParams.set('week', selectedWeek.toString());
-        }
-        url.searchParams.set('limit', '10');
+        url.searchParams.set('moduleId', selectedModuleId.toString());
+        url.searchParams.set('group', selectedGroupIndex.toString());
+        url.searchParams.set('limit', '20');
 
         const response = await fetch(url);
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Sorular yüklenirken bir hata oluştu');
+          throw new Error(errorData.error || 'Sorular yüklenemedi');
         }
         const data = await response.json();
         setQuestions(data);
-        setError('');
-      } catch (error) {
-        console.error('Quiz error:', error);
-        setError(error instanceof Error ? error.message : 'Sorular yüklenirken bir hata oluştu');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Hata');
         setQuestions([]);
       } finally {
         setIsLoading(false);
@@ -57,48 +49,34 @@ export default function QuizPage() {
     };
 
     fetchQuestions();
-  }, [selectedWeek]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <div className="text-red-600 text-center">{error}</div>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="btn btn-primary"
-        >
-          Tekrar Dene
-        </button>
-      </div>
-    );
-  }
-
-  if (questions.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-600 text-center">
-          {selectedWeek 
-            ? `${selectedWeek}. haftaya ait soru bulunmuyor.`
-            : 'Henüz soru bulunmuyor.'}
-        </div>
-      </div>
-    );
-  }
+  }, [selectedModuleId, selectedGroupIndex]);
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">
-        {selectedWeek ? `${selectedWeek}. Hafta Testi` : 'Test'}
-      </h1>
-      <Quiz questions={questions} isAuthenticated={!!session} />
+    <div className="app-shell py-4">
+      <div className="mb-6">
+        <StudyScopePicker />
+      </div>
+
+      <h1 className="mb-2 font-display text-xl font-bold text-on-surface">Quiz</h1>
+      {selectedGroup && (
+        <p className="mb-6 text-sm text-on-surface-variant">
+          {selectedGroup.label} · {selectedGroup.start}–{selectedGroup.end}
+        </p>
+      )}
+
+      {isLoading ? (
+        <div className="flex justify-center py-24">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      ) : error ? (
+        <p className="rounded-card bg-error/10 p-4 text-center text-error">{error}</p>
+      ) : questions.length === 0 ? (
+        <p className="rounded-card bg-cream p-6 text-center text-on-surface-variant">
+          Bu grup için yeterli soru yok.
+        </p>
+      ) : (
+        <Quiz questions={questions} isAuthenticated={!!session} />
+      )}
     </div>
   );
-} 
+}

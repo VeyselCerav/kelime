@@ -13,6 +13,12 @@ interface Statistics {
   weeklyStats: {
     week: number;
     wordCount: number;
+    label?: string;
+  }[];
+  moduleStats?: {
+    moduleId: number;
+    moduleName: string;
+    wordCount: number;
   }[];
   last7DaysLearnedWords: number;
 }
@@ -116,14 +122,21 @@ export default function StatisticsPage() {
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Haftalık İstatistikler</h2>
+            <h2 className="text-xl font-semibold mb-4">Modül İstatistikleri</h2>
             <div className="space-y-4">
-              {stats.weeklyStats.map((week) => (
-                <div key={week.week} className="border-b pb-2">
-                  <h3 className="font-medium mb-2">{week.week}. Hafta</h3>
-                  <div className="flex justify-between items-center">
+              {(stats.moduleStats || stats.weeklyStats).map((row) => (
+                <div
+                  key={'moduleId' in row ? row.moduleId : row.week}
+                  className="border-b pb-2"
+                >
+                  <h3 className="mb-2 font-medium">
+                    {'moduleName' in row
+                      ? row.moduleName
+                      : row.label || `Modül ${row.week}`}
+                  </h3>
+                  <div className="flex items-center justify-between">
                     <span className="text-gray-600">Kelime Sayısı:</span>
-                    <span>{week.wordCount}</span>
+                    <span>{row.wordCount}</span>
                   </div>
                 </div>
               ))}

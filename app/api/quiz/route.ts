@@ -1,40 +1,87 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserFromToken } from '@/lib/auth';
+import { groupPagination } from '@/lib/subgroups';
 
 export async function GET(request: Request) {
   try {
-    const user = await getUserFromToken(request);
+    await getUserFromToken(request);
     const searchParams = new URL(request.url).searchParams;
-    const week = searchParams.get('week');
+    const moduleIdParam = searchParams.get('moduleId') || searchParams.get('week');
+    const moduleSlug = searchParams.get('module');
+    const groupParam = searchParams.get('group');
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
 
-    // Kelimeleri getir
-    const words = await prisma.word.findMany({
-      where: week ? { week: parseInt(week) } : undefined,
-      orderBy: { createdAt: 'desc' },
-    });
+    let moduleId: number | undefined;
+    if (moduleIdParam) {
+      moduleId = parseInt(moduleIdParam, 10);
+    } else if (moduleSlug) {
+      const mod = await prisma.module.findUnique({ where: { slug: moduleSlug } });
+      if (!mod) {
+        return NextResponse.json({ error: 'Modül bulunamadı' }, { status: 404 });
+      }
+      moduleId = mod.id;
+    }
 
-    if (words.length < 4) {
+    let words;
+    if (groupParam && moduleId) {
+      const groupIndex = Math.max(1, parseInt(groupParam, 10) || 1);
+      const { skip, take } = groupPagination(groupIndex);
+      words = await prisma.word.findMany({
+        where: { moduleId },
+        orderBy: { id: 'asc' },
+        skip,
+        take,
+      });
+    } else {
+      words = await prisma.word.findMany({
+        where: moduleId ? { moduleId } : undefined,
+        orderBy: { id: 'asc' },
+      });
+    }
+
+    // Çeldiriciler için aynı modülden ek kelimeler
+    const distractorPool =
+      moduleId && words.length < 8
+        ? await prisma.word.findMany({
+            where: { moduleId },
+            orderBy: { id: 'asc' },
+            take: 80,
+          })
+        : words;
+
+    if (words.length < 1) {
+      return NextResponse.json(
+        { error: 'Bu grupta kelime bulunmuyor.' },
+        { status: 400 }
+      );
+    }
+
+    const pool = distractorPool.length >= 4 ? distractorPool : words;
+
+    if (pool.length < 4 && words.length < 4) {
       return NextResponse.json(
         { error: 'Test için yeterli kelime bulunmuyor. En az 4 kelime gerekli.' },
         { status: 400 }
       );
     }
 
-    // Her kelime için bir soru oluştur
     const questions = words.map((word) => {
-      // Doğru cevap dışındaki kelimeleri seç
-      const otherWords = words.filter((w) => w.id !== word.id);
-      
-      // Rastgele 3 yanlış cevap seç
+      const otherWords = pool.filter((w) => w.id !== word.id);
       const wrongAnswers = [...otherWords]
         .sort(() => Math.random() - 0.5)
         .slice(0, 3)
         .map((w) => w.turkish);
 
-      // Tüm seçenekleri oluştur ve karıştır
-      const options = [...wrongAnswers, word.turkish].sort(() => Math.random() - 0.5);
+      while (wrongAnswers.length < 3 && otherWords.length > wrongAnswers.length) {
+        const extra = otherWords.find((w) => !wrongAnswers.includes(w.turkish));
+        if (!extra) break;
+        wrongAnswers.push(extra.turkish);
+      }
+
+      const options = [...wrongAnswers.slice(0, 3), word.turkish].sort(
+        () => Math.random() - 0.5
+      );
 
       return {
         id: word.id,
@@ -45,17 +92,9 @@ export async function GET(request: Request) {
       };
     });
 
-    // Soruları karıştır ve limitle
     const shuffledQuestions = [...questions]
       .sort(() => Math.random() - 0.5)
-      .slice(0, limit);
-
-    if (shuffledQuestions.length === 0) {
-      return NextResponse.json(
-        { error: 'Bu haftaya ait soru bulunamadı.' },
-        { status: 404 }
-      );
-    }
+      .slice(0, Math.min(limit, questions.length));
 
     return NextResponse.json(shuffledQuestions);
   } catch (error) {
@@ -65,4 +104,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

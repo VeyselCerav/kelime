@@ -1,7 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
+
+/** Ekran genişliğinin ~%22’si; min 72 / max 140 */
+function swipeThreshold(): number {
+  if (typeof window === 'undefined') return 100;
+  return Math.min(140, Math.max(72, window.innerWidth * 0.22));
+}
 
 interface WordCardProps {
   english: string;
@@ -9,187 +15,360 @@ interface WordCardProps {
   wordId: number;
   isAuthenticated?: boolean;
   onActionComplete?: () => void;
+  progressLabel?: string;
+  onProgressSaved?: () => void;
 }
 
-export default function WordCard({ english, turkish, wordId, isAuthenticated, onActionComplete }: WordCardProps) {
+export default function WordCard({
+  english,
+  turkish,
+  wordId,
+  onActionComplete,
+  progressLabel,
+  onProgressSaved,
+}: WordCardProps) {
   const { data: session } = useSession();
   const [isFlipped, setIsFlipped] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
   const [error, setError] = useState('');
+  const [offsetX, setOffsetX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [exitDir, setExitDir] = useState<'left' | 'right' | null>(null);
 
-  const handleFlip = () => {
-    setIsFlipped(!isFlipped);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const offsetRef = useRef(0);
+  const movedRef = useRef(false);
+  const axisRef = useRef<'none' | 'x' | 'y'>('none');
+  const draggingRef = useRef(false);
+  const pointerIdRef = useRef<number | null>(null);
+  const exitDirRef = useRef<'left' | 'right' | null>(null);
+  const markingRef = useRef(false);
+  const sessionRef = useRef(session);
+  const wordIdRef = useRef(wordId);
+  const onActionCompleteRef = useRef(onActionComplete);
+  const onProgressSavedRef = useRef(onProgressSaved);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+  useEffect(() => {
+    wordIdRef.current = wordId;
+  }, [wordId]);
+  useEffect(() => {
+    onActionCompleteRef.current = onActionComplete;
+  }, [onActionComplete]);
+  useEffect(() => {
+    onProgressSavedRef.current = onProgressSaved;
+  }, [onProgressSaved]);
+  useEffect(() => {
+    markingRef.current = isMarking;
+  }, [isMarking]);
+
+  useEffect(() => {
+    setIsFlipped(false);
+    setOffsetX(0);
+    setExitDir(null);
+    setError('');
+    setIsDragging(false);
+    offsetRef.current = 0;
+    movedRef.current = false;
+    axisRef.current = 'none';
+    draggingRef.current = false;
+    pointerIdRef.current = null;
+    exitDirRef.current = null;
+  }, [wordId]);
+
+  const resetCard = () => {
+    offsetRef.current = 0;
+    setOffsetX(0);
+    setExitDir(null);
+    exitDirRef.current = null;
+    setIsDragging(false);
+    draggingRef.current = false;
   };
 
   const markAsUnlearned = async () => {
-    if (!session) {
-      setError('Oturum açmanız gerekiyor');
+    if (!sessionRef.current) {
+      setError('Kaydetmek için oturum açmanız gerekiyor');
+      onActionCompleteRef.current?.();
       return;
     }
-
     setIsMarking(true);
     setError('');
-
+    const id = wordIdRef.current;
     try {
-      const learnedResponse = await fetch('/api/learned-words', {
+      await fetch('/api/learned-words', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          wordId,
-          isLearned: false 
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wordId: id, isLearned: false }),
         credentials: 'include',
       });
-
-      if (!learnedResponse.ok) {
-        throw new Error('Kelime işaretlenirken bir hata oluştu');
-      }
-
-      const unlearnedResponse = await fetch('/api/unlearned-words', {
+      await fetch('/api/unlearned-words', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ wordId }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wordId: id }),
         credentials: 'include',
       });
-
-      if (!unlearnedResponse.ok) {
-        throw new Error('Kelime ezberlenemeyenler listesine eklenirken bir hata oluştu');
-      }
-
-      setIsFlipped(false); // Kartı İngilizce yüzüne çevir
-      if (onActionComplete) {
-        onActionComplete();
-      }
-    } catch (error) {
-      console.error('Kelime işaretleme hatası:', error);
-      setError(error instanceof Error ? error.message : 'Kelime işaretlenirken bir hata oluştu');
+      onActionCompleteRef.current?.();
+      onProgressSavedRef.current?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Hata oluştu');
+      resetCard();
     } finally {
       setIsMarking(false);
     }
   };
 
   const markAsLearned = async () => {
-    if (!session) {
-      setError('Oturum açmanız gerekiyor');
+    if (!sessionRef.current) {
+      setError('Kaydetmek için oturum açmanız gerekiyor');
+      onActionCompleteRef.current?.();
       return;
     }
-
     setIsMarking(true);
     setError('');
-
+    const id = wordIdRef.current;
     try {
       const response = await fetch('/api/learned-words', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          wordId,
-          isLearned: true 
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wordId: id, isLearned: true }),
         credentials: 'include',
       });
-
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Kelime işaretlenirken bir hata oluştu');
+        const data = await response.json();
+        throw new Error(data.error || 'Hata');
       }
-
-      setIsFlipped(false); // Kartı İngilizce yüzüne çevir
-      if (onActionComplete) {
-        onActionComplete();
-      }
-    } catch (error) {
-      console.error('Kelime işaretleme hatası:', error);
-      setError(error instanceof Error ? error.message : 'Kelime işaretlenirken bir hata oluştu');
+      onActionCompleteRef.current?.();
+      onProgressSavedRef.current?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Hata oluştu');
+      resetCard();
     } finally {
       setIsMarking(false);
     }
   };
 
+  const markLearnedRef = useRef(markAsLearned);
+  const markUnlearnedRef = useRef(markAsUnlearned);
+  markLearnedRef.current = markAsLearned;
+  markUnlearnedRef.current = markAsUnlearned;
+
+  const commitSwipe = (dir: 'left' | 'right') => {
+    if (exitDirRef.current || markingRef.current) return;
+    exitDirRef.current = dir;
+    setExitDir(dir);
+    const fly = typeof window !== 'undefined' ? Math.max(window.innerWidth, 420) : 480;
+    offsetRef.current = dir === 'right' ? fly : -fly;
+    setOffsetX(offsetRef.current);
+    window.setTimeout(() => {
+      if (dir === 'right') void markLearnedRef.current();
+      else void markUnlearnedRef.current();
+    }, 200);
+  };
+
+  const commitSwipeRef = useRef(commitSwipe);
+  commitSwipeRef.current = commitSwipe;
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!draggingRef.current || pointerIdRef.current !== e.pointerId) return;
+      if (exitDirRef.current || markingRef.current) return;
+
+      const dx = e.clientX - startX.current;
+      const dy = e.clientY - startY.current;
+
+      if (axisRef.current === 'none') {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        axisRef.current = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+      }
+
+      if (axisRef.current === 'y') return;
+
+      movedRef.current = true;
+      e.preventDefault();
+      offsetRef.current = dx;
+      setOffsetX(dx);
+    };
+
+    const onUp = (e: PointerEvent) => {
+      if (pointerIdRef.current !== e.pointerId) return;
+      if (!draggingRef.current) return;
+
+      draggingRef.current = false;
+      setIsDragging(false);
+      pointerIdRef.current = null;
+
+      if (axisRef.current !== 'x' || !movedRef.current) {
+        if (!movedRef.current && axisRef.current !== 'y') {
+          setIsFlipped((f) => !f);
+        }
+        offsetRef.current = 0;
+        setOffsetX(0);
+        axisRef.current = 'none';
+        movedRef.current = false;
+        return;
+      }
+
+      const dx = offsetRef.current;
+      const threshold = swipeThreshold();
+      if (dx >= threshold) {
+        commitSwipeRef.current('right');
+      } else if (dx <= -threshold) {
+        commitSwipeRef.current('left');
+      } else {
+        offsetRef.current = 0;
+        setOffsetX(0);
+      }
+
+      axisRef.current = 'none';
+      movedRef.current = false;
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (markingRef.current || exitDirRef.current) return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+    pointerIdRef.current = e.pointerId;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    offsetRef.current = 0;
+    movedRef.current = false;
+    axisRef.current = 'none';
+    draggingRef.current = true;
+    setIsDragging(true);
+    setOffsetX(0);
+  };
+
+  const rotation = Math.max(-14, Math.min(14, offsetX / 16));
+  const threshold = swipeThreshold();
+  const learnedHint = Math.min(1, Math.max(0, offsetX / threshold));
+  const unlearnedHint = Math.min(1, Math.max(0, -offsetX / threshold));
+
   return (
-    <div className="relative w-full h-64">
+    <div className="flex w-full flex-col items-center">
+      {progressLabel && (
+        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+          {progressLabel}
+        </p>
+      )}
+
+      <p className="mb-3 px-2 text-center text-xs font-medium text-on-surface-variant">
+        Sola: Ezberleyemedim · Sağa: Ezberledim · Dokun: çevir
+      </p>
+
       <div
-        className={`relative w-full h-full transition-transform duration-500 transform-style-3d cursor-pointer ${
-          isFlipped ? 'rotate-y-180' : ''
-        }`}
-        onClick={handleFlip}
+        className="perspective-1000 relative mx-auto aspect-[3/4] w-full max-w-md select-none sm:max-w-lg"
+        style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
       >
-        {/* İngilizce yüz */}
-        <div className="absolute w-full h-full bg-white rounded-xl shadow-lg p-6 backface-hidden flex items-center justify-center">
-          <h3 className="text-2xl font-bold text-center text-gray-900">
-            {english}
-          </h3>
+        <div
+          className="pointer-events-none absolute inset-y-8 left-2 z-10 flex items-center"
+          style={{ opacity: unlearnedHint }}
+          aria-hidden
+        >
+          <span className="rounded-full bg-error/90 px-3 py-1.5 text-[11px] font-bold text-white shadow-soft">
+            Ezberleyemedim
+          </span>
         </div>
-        
-        {/* Türkçe yüz */}
-        <div className="absolute w-full h-full bg-indigo-600 text-white rounded-xl shadow-lg p-6 backface-hidden rotate-y-180 flex items-center justify-center">
-          <h3 className="text-2xl font-bold text-center">
-            {turkish}
-          </h3>
+        <div
+          className="pointer-events-none absolute inset-y-8 right-2 z-10 flex items-center"
+          style={{ opacity: learnedHint }}
+          aria-hidden
+        >
+          <span className="rounded-full bg-tertiary/90 px-3 py-1.5 text-[11px] font-bold text-white shadow-soft">
+            Ezberledim
+          </span>
+        </div>
+
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Kelime kartı. Kaydır veya dokunarak çevir."
+          className={`flashcard-inner paper-stack relative h-full w-full cursor-grab active:cursor-grabbing ${
+            isFlipped ? 'is-flipped' : ''
+          } ${isDragging || exitDir ? '' : 'transition-transform duration-200 ease-out'}`}
+          style={{
+            touchAction: 'none',
+            transform: isFlipped
+              ? `translate3d(${offsetX}px, 0, 0) rotate(${rotation}deg) rotateY(180deg)`
+              : `translate3d(${offsetX}px, 0, 0) rotate(${rotation}deg)`,
+            opacity: exitDir ? 0.35 : 1,
+            willChange: isDragging ? 'transform' : undefined,
+          }}
+          onPointerDown={onPointerDown}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsFlipped((f) => !f);
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              commitSwipe('right');
+            } else if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              commitSwipe('left');
+            }
+          }}
+        >
+          <div className="flashcard-face paper-texture flex flex-col items-center justify-center rounded-card border border-outline-variant p-6 shadow-soft">
+            <h1 className="mt-8 text-center font-display text-4xl font-bold italic text-primary sm:text-5xl">
+              {english}
+            </h1>
+            <div className="absolute bottom-4 flex items-center gap-1 text-on-surface-variant/50">
+              <span className="material-symbols-outlined text-[18px]">swipe</span>
+              <span className="text-xs font-bold">Kaydır veya dokun</span>
+            </div>
+          </div>
+
+          <div className="flashcard-face flashcard-back paper-texture flex flex-col items-center justify-center rounded-card border border-outline-variant p-6 text-center shadow-soft">
+            <div className="mb-4 rounded-full border-2 border-primary-container px-4 py-1">
+              <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                Anlam
+              </span>
+            </div>
+            <h2 className="mb-3 font-display text-2xl font-bold text-on-surface sm:text-3xl">
+              {turkish}
+            </h2>
+            <p className="max-w-[240px] text-sm italic text-secondary">{english}</p>
+          </div>
         </div>
       </div>
 
-      {isAuthenticated && (
-        <div className="absolute top-2 right-2 left-2 flex justify-between z-10">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              markAsUnlearned();
-            }}
-            disabled={isMarking}
-            className={`p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors ${
-              isMarking ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-            title="Ezberleyemedim"
-          >
-            {isMarking ? (
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600" />
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-          </button>
-          
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              markAsLearned();
-            }}
-            disabled={isMarking}
-            className={`p-2 bg-green-100 text-green-600 rounded-full hover:bg-green-200 transition-colors ${
-              isMarking ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-            title="Ezberledim"
-          >
-            {isMarking ? (
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600" />
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </button>
-        </div>
-      )}
+      <div className="mt-5 grid w-full max-w-md grid-cols-2 gap-3 sm:max-w-lg">
+        <button
+          type="button"
+          disabled={isMarking || !!exitDir}
+          onClick={() => commitSwipe('left')}
+          className="btn-tactile flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-error/30 bg-error/10 py-3.5 text-sm font-bold text-error disabled:opacity-50"
+        >
+          <span className="material-symbols-outlined text-[20px]">close</span>
+          Ezberleyemedim
+        </button>
+        <button
+          type="button"
+          disabled={isMarking || !!exitDir}
+          onClick={() => commitSwipe('right')}
+          className="btn-tactile flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-tertiary/30 bg-tertiary/10 py-3.5 text-sm font-bold text-tertiary disabled:opacity-50"
+        >
+          <span className="material-symbols-outlined text-[20px]">check</span>
+          Ezberledim
+        </button>
+      </div>
 
-      {error && (
-        <div className="absolute bottom-2 left-2 right-2 text-sm text-center text-red-600 bg-white/90 rounded-md p-2 shadow-lg">
-          {error}
-          <button
-            onClick={() => setError('')}
-            className="ml-2 text-red-800 hover:text-red-900"
-          >
-            ✕
-          </button>
-        </div>
+      {isMarking && (
+        <p className="mt-4 text-sm text-on-surface-variant">Kaydediliyor…</p>
       )}
+      {error && <p className="mt-3 text-center text-sm text-error">{error}</p>}
     </div>
   );
-} 
+}

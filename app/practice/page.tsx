@@ -1,198 +1,130 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWeek } from '../context/WeekContext';
 import { useSession } from 'next-auth/react';
+import { useModule } from '../context/ModuleContext';
 import Link from 'next/link';
-import WordCard from '../components/WordCard';
 
 interface Word {
-  id: string;
+  id: number;
   english: string;
   turkish: string;
-  week: number;
+  moduleId: number;
 }
 
 export default function Practice() {
-  const [selectedWeeks, setSelectedWeeks] = useState<number[]>([]);
-  const [wordCount, setWordCount] = useState<number>(10);
+  const [selectedModuleIds, setSelectedModuleIds] = useState<number[]>([]);
+  const [wordCount, setWordCount] = useState(10);
   const [words, setWords] = useState<Word[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { totalWeeks } = useWeek();
   const [error, setError] = useState('');
+  const { modules } = useModule();
   const { data: session } = useSession();
 
   useEffect(() => {
-    const fetchWords = async () => {
-      try {
-        const response = await fetch('/api/words');
-        if (!response.ok) {
-          throw new Error('Kelimeler yüklenirken bir hata oluştu');
-        }
-        const data = await response.json();
-        setWords(data);
-      } catch (error) {
-        setError('Kelimeler yüklenirken bir hata oluştu');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchWords();
+    fetch('/api/words')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setWords(data);
+        else setError('Kelimeler yüklenemedi');
+      })
+      .catch(() => setError('Kelimeler yüklenirken bir hata oluştu'))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const handleWeekToggle = (week: number) => {
-    setSelectedWeeks(prev =>
-      prev.includes(week)
-        ? prev.filter(w => w !== week)
-        : [...prev, week]
+  useEffect(() => {
+    if (modules.length && selectedModuleIds.length === 0) {
+      setSelectedModuleIds(modules.map((m) => m.id));
+    }
+  }, [modules, selectedModuleIds.length]);
+
+  const toggleModule = (id: number) => {
+    setSelectedModuleIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
-  const handleWordCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    if (!isNaN(value) && value > 0) {
-      setWordCount(value);
-    }
-  };
-
   const getRandomWords = () => {
-    // Seçili haftalardaki kelimeleri filtrele
-    const filteredWords = words.filter(word => selectedWeeks.includes(word.week));
-    
-    // Rastgele kelime seç
-    const shuffled = [...filteredWords].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(wordCount, shuffled.length));
+    const filtered = words.filter((w) => selectedModuleIds.includes(w.moduleId));
+    return [...filtered].sort(() => Math.random() - 0.5).slice(0, wordCount);
   };
 
   const startFlashcards = () => {
-    const selectedWords = getRandomWords();
-    localStorage.setItem('practiceWords', JSON.stringify(selectedWords));
+    localStorage.setItem('practiceWords', JSON.stringify(getRandomWords()));
     window.location.href = '/flashcards?mode=practice';
   };
 
   const startQuiz = () => {
-    const selectedWords = getRandomWords();
-    localStorage.setItem('practiceWords', JSON.stringify(selectedWords));
+    localStorage.setItem('practiceWords', JSON.stringify(getRandomWords()));
     window.location.href = '/quiz?mode=practice';
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Yükleniyor...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-red-600">{error}</div>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-8">
-          Tekrar Et
-        </h1>
+    <div className="app-shell space-y-6 py-6">
+      <h1 className="font-display text-2xl font-bold text-on-surface">Tekrar Et</h1>
+      {error && <p className="text-error">{error}</p>}
 
-        <div className="card bg-white border-2 border-primary/10 shadow-lg hover:shadow-xl transition-all rounded-2xl">
-          <div className="card-body p-8">
-            <div className="space-y-8">
-              {/* Hafta Seçimi */}
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Haftaları Seç</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {Array.from({ length: totalWeeks }, (_, i) => i + 1).map((week) => (
-                    <button
-                      key={week}
-                      onClick={() => handleWeekToggle(week)}
-                      className={`relative btn ${
-                        selectedWeeks.includes(week)
-                          ? 'bg-primary/10 text-primary border-primary/20'
-                          : 'bg-white text-base-content/70 border-base-300'
-                      } border-2 rounded-xl hover:shadow-md transition-all h-12`}
-                    >
-                      Hafta {week}
-                      {selectedWeeks.includes(week) && (
-                        <svg 
-                          className="absolute top-1 right-1 w-4 h-4 text-primary"
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M5 13l4 4L19 7" 
-                          />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Kelime Sayısı */}
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Kelime Sayısı</h2>
-                <input
-                  type="number"
-                  value={wordCount}
-                  onChange={handleWordCountChange}
-                  min="1"
-                  className="input bg-white border-2 border-base-300 focus:border-primary/30 w-full rounded-xl"
-                />
-              </div>
-
-              {/* Çalışma Tipi Seçimi */}
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Çalışma Tipini Seç</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button
-                    onClick={startFlashcards}
-                    disabled={selectedWeeks.length === 0}
-                    className={`btn h-auto py-6 ${
-                      selectedWeeks.length === 0
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-white text-primary hover:bg-primary/5 border-2 border-primary/20'
-                    } rounded-xl hover:shadow-lg transition-all`}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                      <span>Kelime Kartları</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={startQuiz}
-                    disabled={selectedWeeks.length === 0}
-                    className={`btn h-auto py-6 ${
-                      selectedWeeks.length === 0
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-white text-primary hover:bg-primary/5 border-2 border-primary/20'
-                    } rounded-xl hover:shadow-lg transition-all`}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                      </svg>
-                      <span>Test</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+      <section className="rounded-card bg-cream p-5 shadow-organic">
+        <h2 className="mb-3 font-semibold">Modüller</h2>
+        <div className="space-y-2">
+          {modules.map((m) => (
+            <label key={m.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={selectedModuleIds.includes(m.id)}
+                onChange={() => toggleModule(m.id)}
+                className="rounded border-outline-variant"
+              />
+              {m.name} ({m.wordCount})
+            </label>
+          ))}
         </div>
+      </section>
+
+      <section className="rounded-card bg-cream p-5 shadow-organic">
+        <label className="mb-2 block text-sm font-semibold">Kelime sayısı</label>
+        <input
+          type="number"
+          min={1}
+          value={wordCount}
+          onChange={(e) => setWordCount(Math.max(1, parseInt(e.target.value) || 1))}
+          className="w-full rounded-xl border border-outline-variant px-3 py-2"
+        />
+      </section>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={startFlashcards}
+          className="rounded-full bg-secondary-container py-3 font-semibold text-on-secondary-container"
+        >
+          Kartlarla Tekrar
+        </button>
+        <button
+          type="button"
+          onClick={startQuiz}
+          className="rounded-full bg-primary-container py-3 font-semibold text-on-primary-container"
+        >
+          Quiz ile Tekrar
+        </button>
       </div>
+
+      {!session && (
+        <p className="text-center text-sm text-on-surface-variant">
+          İlerleme kaydı için{' '}
+          <Link href="/login" className="text-primary underline">
+            giriş yap
+          </Link>
+        </p>
+      )}
     </div>
   );
-} 
+}

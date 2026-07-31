@@ -20,15 +20,15 @@ export async function sendVerificationEmail(email: string, token: string) {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Email Adresinizi Doğrulayın - Haftalık Kelime',
+    subject: 'Email Adresinizi Doğrulayın - YDS Monster',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #4F46E5;">Haftalık Kelime - Email Doğrulama</h2>
+        <h2 style="color: #476649;">YDS Monster - Email Doğrulama</h2>
         <p>Merhaba,</p>
-        <p>Haftalık Kelime uygulamasına hoş geldiniz! Email adresinizi doğrulamak için aşağıdaki butona tıklayın:</p>
+        <p>YDS Monster uygulamasına hoş geldiniz! Email adresinizi doğrulamak için aşağıdaki butona tıklayın:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${verificationUrl}" 
-             style="background-color: #4F46E5; color: white; padding: 12px 24px; 
+             style="background-color: #476649; color: white; padding: 12px 24px; 
                     text-decoration: none; border-radius: 5px; display: inline-block;">
             Email Adresimi Doğrula
           </a>
@@ -62,15 +62,15 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Parola Sıfırlama - Haftalık Kelime',
+    subject: 'Parola Sıfırlama - YDS Monster',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #4F46E5;">Haftalık Kelime - Parola Sıfırlama</h2>
+        <h2 style="color: #476649;">YDS Monster - Parola Sıfırlama</h2>
         <p>Merhaba,</p>
         <p>Parolanızı sıfırlamak için bir talepte bulundunuz. Aşağıdaki butona tıklayarak yeni parolanızı belirleyebilirsiniz:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${resetUrl}" 
-             style="background-color: #4F46E5; color: white; padding: 12px 24px; 
+             style="background-color: #476649; color: white; padding: 12px 24px; 
                     text-decoration: none; border-radius: 5px; display: inline-block;">
             Parolamı Sıfırla
           </a>

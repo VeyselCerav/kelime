@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -94,11 +94,29 @@ export default function ProfilePage() {
     ],
   };
 
+  const handleSignOut = () => {
+    void signOut({ callbackUrl: '/login' });
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-8">
-        Profil
-      </h1>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          Profil
+        </h1>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="btn-tactile inline-flex min-h-[44px] items-center gap-2 rounded-2xl border border-error/30 bg-error/10 px-4 py-2.5 text-sm font-bold text-error"
+        >
+          <span className="material-symbols-outlined text-[20px]">logout</span>
+          Çıkış Yap
+        </button>
+      </div>
+
+      <p className="mb-6 text-sm text-on-surface-variant">
+        {session.user?.username || session.user?.email}
+      </p>
 
       {/* İlerleme Kartları */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">

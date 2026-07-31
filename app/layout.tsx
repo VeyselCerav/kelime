@@ -1,29 +1,53 @@
 import type { Metadata } from 'next';
-import { Inter } from "next/font/google";
-import "./globals.css";
+import { DM_Sans, Playfair_Display } from 'next/font/google';
+import './globals.css';
 import { getServerSession } from 'next-auth';
 import { authOptions } from './api/auth/[...nextauth]/route';
 import Providers from './providers';
 import ClientLayout from './ClientLayout';
 
-const inter = Inter({ subsets: ["latin"] });
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-dm-sans',
+  display: 'swap',
+});
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: "Haftalık Kelime Öğren",
-  description: "İngilizce kelime öğrenme uygulaması",
+  title: 'YDS Monster',
+  description: 'Mobil kelime kartları ve test uygulaması',
+  icons: {
+    icon: [
+      { url: '/icon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export default async function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
 
   return (
-    <html lang="tr" data-theme="light" suppressHydrationWarning>
+    <html lang="tr" data-theme="yds" suppressHydrationWarning>
       <head>
-        <style dangerouslySetInnerHTML={{ __html: `
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=swap"
+          rel="stylesheet"
+        />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
           :root { --removed-next-dev-tools: none !important; }
           [data-next-badge-root],
           [data-next-badge],
@@ -51,26 +75,16 @@ export default async function RootLayout({
             pointer-events: none !important;
             position: absolute !important;
             left: -9999px !important;
-            top: -9999px !important;
             width: 0 !important;
             height: 0 !important;
-            max-width: 0 !important;
-            max-height: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border: 0 !important;
-            outline: none !important;
-            clip: rect(0 0 0 0) !important;
-            -webkit-clip-path: inset(50%) !important;
-            clip-path: inset(50%) !important;
           }
-        `}} />
+        `,
+          }}
+        />
       </head>
-      <body className={inter.className}>
+      <body className={`${dmSans.variable} ${playfair.variable} font-body antialiased`}>
         <Providers session={session}>
-          <ClientLayout>
-            {children}
-          </ClientLayout>
+          <ClientLayout>{children}</ClientLayout>
         </Providers>
       </body>
     </html>
