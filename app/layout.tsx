@@ -21,6 +21,26 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: 'YDS Monster',
   description: 'Mobil kelime kartları ve test uygulaması',
+  applicationName: 'YDS Monster',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'YDS Monster',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#476649' },
+    { media: '(prefers-color-scheme: dark)', color: '#476649' },
+  ],
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: 'cover',
+  },
   icons: {
     icon: [
       { url: '/icon-32.png', sizes: '32x32', type: 'image/png' },

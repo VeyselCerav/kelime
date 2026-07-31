@@ -28,6 +28,7 @@ yarn-error.log*
 .env*.local
 .env
 env
+.env.local
 
 # vercel
 .vercel
@@ -46,3 +47,4 @@ dataOne.json
 dataTwo.json
 dataThree.json
 ux.txt
+.env*
