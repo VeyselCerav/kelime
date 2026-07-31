@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { getUserFromToken } from '@/lib/auth';
 import { groupPagination } from '@/lib/subgroups';
+import { weightedShuffle } from '@/lib/study-queue';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function GET(request: Request) {
   try {
@@ -39,6 +42,25 @@ export async function GET(request: Request) {
         orderBy: { id: 'asc' },
       });
     }
+
+    // Ağırlıklı sıra: ezberlenmeyen ×3
+    const session = await getServerSession(authOptions);
+    let learnedSet = new Set<number>();
+    if (session?.user?.id && words.length) {
+      const userId = parseInt(session.user.id, 10);
+      const learned = await prisma.learnedWord.findMany({
+        where: {
+          userId,
+          isLearned: true,
+          wordId: { in: words.map((w) => w.id) },
+        },
+        select: { wordId: true },
+      });
+      learnedSet = new Set(learned.map((l) => l.wordId));
+    }
+    words = weightedShuffle(
+      words.map((w) => ({ ...w, isLearned: learnedSet.has(w.id) }))
+    );
 
     // Çeldiriciler için aynı modülden ek kelimeler
     const distractorPool =

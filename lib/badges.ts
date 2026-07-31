@@ -1,4 +1,4 @@
-export type BadgeType = 'words' | 'streak';
+export type BadgeType = 'words' | 'streak' | 'group';
 
 export interface BadgeDef {
   id: string;
@@ -14,6 +14,34 @@ export interface BadgeStatus extends BadgeDef {
   earned: boolean;
   progress: number;
   percentage: number;
+}
+
+export function groupBadgeId(moduleId: number, groupIndex: number): string {
+  return `group:${moduleId}:${groupIndex}`;
+}
+
+/** Tamamlanan alt gruplardan dinamik rozetler */
+export function badgesFromCompletedGroups(
+  groups: {
+    moduleId: number;
+    groupIndex: number;
+    label: string;
+    wordCount: number;
+  }[]
+): BadgeStatus[] {
+  const accents = ['#7d9e7e', '#8f4c27', '#fea77a', '#c9847a', '#476649', '#F9A825'];
+  return groups.map((g, i) => ({
+    id: groupBadgeId(g.moduleId, g.groupIndex),
+    name: g.label,
+    description: `${g.label} grubundaki ${g.wordCount} kelimenin tümünü ezberledin`,
+    requirement: g.wordCount,
+    type: 'group' as const,
+    icon: 'military_tech',
+    accent: accents[i % accents.length],
+    earned: true,
+    progress: g.wordCount,
+    percentage: 100,
+  }));
 }
 
 /** Her 50 kelime: 50 → 500 */

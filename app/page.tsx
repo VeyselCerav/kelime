@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import ModulePicker from './components/ModulePicker';
 import BadgeShowcase from './components/BadgeShowcase';
+import ScopeProgressBar, {
+  ScopeProgressView,
+} from './components/ScopeProgressBar';
 import { useModule } from './context/ModuleContext';
 import { useBadgeContext } from './context/BadgeContext';
 
@@ -16,9 +19,11 @@ interface Word {
 
 export default function Home() {
   const { data: session } = useSession();
-  const { selectedModule, selectedModuleId } = useModule();
+  const { selectedModule, selectedModuleId, selectedGroupIndex, selectedGroup } =
+    useModule();
   const { badges, learnedCount } = useBadgeContext();
   const [words, setWords] = useState<Word[]>([]);
+  const [scope, setScope] = useState<ScopeProgressView | null>(null);
   const [goalTarget] = useState(20);
 
   useEffect(() => {
@@ -30,6 +35,31 @@ export default function Home() {
       })
       .catch(console.error);
   }, [selectedModuleId]);
+
+  useEffect(() => {
+    if (!selectedModuleId || !selectedGroupIndex || !session) {
+      setScope(null);
+      return;
+    }
+    fetch(
+      `/api/progress/scope?moduleId=${selectedModuleId}&group=${selectedGroupIndex}`
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.total != null) {
+          setScope({
+            learned: data.learned,
+            total: data.total,
+            percentage: data.percentage,
+            label: data.label,
+            moduleLearned: data.moduleLearned,
+            moduleTotal: data.moduleTotal,
+            complete: data.complete,
+          });
+        }
+      })
+      .catch(console.error);
+  }, [selectedModuleId, selectedGroupIndex, session, learnedCount]);
 
   const dailyDone = Math.min(learnedCount % goalTarget || 0, goalTarget);
   const wordOfDay = useMemo(() => {
@@ -75,6 +105,17 @@ export default function Home() {
         </h2>
         <ModulePicker />
       </section>
+
+      {scope && (
+        <section>
+          <ScopeProgressBar progress={scope} showModule />
+          {selectedGroup && (
+            <p className="mt-2 text-xs text-on-surface-variant">
+              Seçili alt grup: {selectedGroup.label}
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="paper-texture soft-shadow flex items-center justify-between rounded-card border border-outline-variant/30 p-6">
         <div className="space-y-2">

@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '../auth/[...nextauth]/route';
-import { computeStreakFromDates, evaluateBadges } from '@/lib/badges';
+import {
+  badgesFromCompletedGroups,
+  computeStreakFromDates,
+  evaluateBadges,
+} from '@/lib/badges';
+import { findCompletedGroups } from '@/lib/group-progress';
 
 export async function GET() {
   try {
@@ -14,23 +19,53 @@ export async function GET() {
 
     const userId = parseInt(session.user.id, 10);
 
-    const [learnedWordsCount, learnedRows] = await Promise.all([
-      prisma.learnedWord.count({
-        where: { userId, isLearned: true },
-      }),
-      prisma.learnedWord.findMany({
-        where: { userId, isLearned: true },
-        select: { updatedAt: true },
-      }),
-    ]);
+    const [learnedWordsCount, learnedRows, modules, learnedWordIds] =
+      await Promise.all([
+        prisma.learnedWord.count({
+          where: { userId, isLearned: true },
+        }),
+        prisma.learnedWord.findMany({
+          where: { userId, isLearned: true },
+          select: { updatedAt: true },
+        }),
+        prisma.module.findMany({
+          orderBy: { sortOrder: 'asc' },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            words: { select: { id: true }, orderBy: { id: 'asc' } },
+          },
+        }),
+        prisma.learnedWord.findMany({
+          where: { userId, isLearned: true },
+          select: { wordId: true },
+        }),
+      ]);
 
     const streak = computeStreakFromDates(learnedRows.map((r) => r.updatedAt));
-    const badges = evaluateBadges(learnedWordsCount, streak);
+    const coreBadges = evaluateBadges(learnedWordsCount, streak);
+
+    const learnedIdSet = new Set(learnedWordIds.map((r) => r.wordId));
+    const completed = findCompletedGroups({
+      modules: modules.map((m) => ({
+        id: m.id,
+        slug: m.slug,
+        name: m.name,
+        wordIdsAsc: m.words.map((w) => w.id),
+      })),
+      learnedIdSet,
+    });
+    const groupBadges = badgesFromCompletedGroups(completed);
+
+    const badges = [...coreBadges, ...groupBadges];
 
     return NextResponse.json({
       learnedWordsCount,
       streak,
       badges,
+      groupBadges,
+      completedGroups: completed.length,
       earnedCount: badges.filter((b) => b.earned).length,
       totalCount: badges.length,
     });

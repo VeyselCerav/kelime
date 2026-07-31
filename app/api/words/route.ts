@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { groupPagination } from '@/lib/subgroups';
+import { weightedShuffle } from '@/lib/study-queue';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function GET(request: Request) {
   try {
@@ -8,6 +11,7 @@ export async function GET(request: Request) {
     const moduleId = searchParams.get('moduleId');
     const moduleSlug = searchParams.get('module');
     const groupParam = searchParams.get('group');
+    const study = searchParams.get('study') === '1';
 
     let resolvedModuleId: number | undefined;
 
@@ -23,11 +27,11 @@ export async function GET(request: Request) {
 
     const where = resolvedModuleId ? { moduleId: resolvedModuleId } : undefined;
 
-    // Sabit dilimler: id sırası (1–20, 21–40…)
+    let words;
     if (groupParam && resolvedModuleId) {
       const groupIndex = Math.max(1, parseInt(groupParam, 10) || 1);
       const { skip, take } = groupPagination(groupIndex);
-      const words = await prisma.word.findMany({
+      words = await prisma.word.findMany({
         where,
         orderBy: { id: 'asc' },
         skip,
@@ -36,16 +40,43 @@ export async function GET(request: Request) {
           module: { select: { id: true, slug: true, name: true } },
         },
       });
-      return NextResponse.json(words);
+    } else {
+      words = await prisma.word.findMany({
+        where,
+        orderBy: { id: 'asc' },
+        include: {
+          module: { select: { id: true, slug: true, name: true } },
+        },
+      });
     }
 
-    const words = await prisma.word.findMany({
-      where,
-      orderBy: { id: 'asc' },
-      include: {
-        module: { select: { id: true, slug: true, name: true } },
-      },
-    });
+    // Çalışma modu: öğrenme durumu + ağırlıklı sıra
+    if (study) {
+      const session = await getServerSession(authOptions);
+      let learnedSet = new Set<number>();
+      if (session?.user?.id) {
+        const userId = parseInt(session.user.id, 10);
+        const ids = words.map((w) => w.id);
+        if (ids.length) {
+          const learned = await prisma.learnedWord.findMany({
+            where: {
+              userId,
+              isLearned: true,
+              wordId: { in: ids },
+            },
+            select: { wordId: true },
+          });
+          learnedSet = new Set(learned.map((l) => l.wordId));
+        }
+      }
+
+      const withFlags = words.map((w) => ({
+        ...w,
+        isLearned: learnedSet.has(w.id),
+      }));
+      const ordered = weightedShuffle(withFlags);
+      return NextResponse.json(ordered);
+    }
 
     return NextResponse.json(words);
   } catch (error: unknown) {

@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Quiz from '../components/Quiz';
 import StudyScopePicker from '../components/StudyScopePicker';
+import ScopeProgressBar, {
+  ScopeProgressView,
+} from '../components/ScopeProgressBar';
 import { useModule } from '../context/ModuleContext';
+import { useBadgeContext } from '../context/BadgeContext';
 
 interface Question {
   id: number;
@@ -18,8 +22,31 @@ export default function QuizPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [scope, setScope] = useState<ScopeProgressView | null>(null);
   const { data: session } = useSession();
   const { selectedModuleId, selectedGroup, selectedGroupIndex } = useModule();
+
+  const refreshScope = useCallback(async () => {
+    if (!selectedModuleId || !selectedGroupIndex || !session) return;
+    try {
+      const res = await fetch(
+        `/api/progress/scope?moduleId=${selectedModuleId}&group=${selectedGroupIndex}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setScope({
+        learned: data.learned,
+        total: data.total,
+        percentage: data.percentage,
+        label: data.label,
+        moduleLearned: data.moduleLearned,
+        moduleTotal: data.moduleTotal,
+        complete: data.complete,
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [selectedModuleId, selectedGroupIndex, session]);
 
   useEffect(() => {
     if (!selectedModuleId || !selectedGroupIndex) return;
@@ -40,6 +67,7 @@ export default function QuizPage() {
         }
         const data = await response.json();
         setQuestions(data);
+        void refreshScope();
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Hata');
         setQuestions([]);
@@ -49,12 +77,16 @@ export default function QuizPage() {
     };
 
     fetchQuestions();
-  }, [selectedModuleId, selectedGroupIndex]);
+  }, [selectedModuleId, selectedGroupIndex, refreshScope]);
 
   return (
     <div className="app-shell py-4">
       <div className="mb-6">
         <StudyScopePicker />
+      </div>
+
+      <div className="mb-4">
+        <ScopeProgressBar progress={scope} showModule />
       </div>
 
       <h1 className="mb-2 font-display text-xl font-bold text-on-surface">Quiz</h1>

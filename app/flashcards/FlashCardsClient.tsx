@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import WordCard from '../components/WordCard';
 import StudyScopePicker from '../components/StudyScopePicker';
+import ScopeProgressBar, {
+  ScopeProgressView,
+} from '../components/ScopeProgressBar';
 import { useModule } from '../context/ModuleContext';
 import { useBadgeContext } from '../context/BadgeContext';
 
@@ -13,6 +16,7 @@ interface Word {
   english: string;
   turkish: string;
   moduleId: number;
+  isLearned?: boolean;
 }
 
 export default function FlashCardsClient() {
@@ -20,11 +24,34 @@ export default function FlashCardsClient() {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [scope, setScope] = useState<ScopeProgressView | null>(null);
   const { data: session } = useSession();
   const { selectedModuleId, selectedGroup, selectedGroupIndex } = useModule();
   const { refreshBadges } = useBadgeContext();
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
+
+  const refreshScope = useCallback(async () => {
+    if (!selectedModuleId || !selectedGroupIndex || !session) return;
+    try {
+      const res = await fetch(
+        `/api/progress/scope?moduleId=${selectedModuleId}&group=${selectedGroupIndex}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setScope({
+        learned: data.learned,
+        total: data.total,
+        percentage: data.percentage,
+        label: data.label,
+        moduleLearned: data.moduleLearned,
+        moduleTotal: data.moduleTotal,
+        complete: data.complete,
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [selectedModuleId, selectedGroupIndex, session]);
 
   useEffect(() => {
     if (mode === 'practice') {
@@ -40,7 +67,7 @@ export default function FlashCardsClient() {
       setError('');
       try {
         const response = await fetch(
-          `/api/words?moduleId=${selectedModuleId}&group=${selectedGroupIndex}`
+          `/api/words?moduleId=${selectedModuleId}&group=${selectedGroupIndex}&study=1`
         );
         if (!response.ok) {
           const errorData = await response.json();
@@ -50,6 +77,7 @@ export default function FlashCardsClient() {
         if (!Array.isArray(data)) throw new Error('Geçersiz yanıt');
         setWords(data);
         setCurrentWordIndex(0);
+        void refreshScope();
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Hata');
       } finally {
@@ -57,7 +85,7 @@ export default function FlashCardsClient() {
       }
     };
     fetchWords();
-  }, [selectedModuleId, selectedGroupIndex, mode]);
+  }, [selectedModuleId, selectedGroupIndex, mode, refreshScope]);
 
   const goNext = () => {
     setCurrentWordIndex((i) => (i + 1 < words.length ? i + 1 : 0));
@@ -69,6 +97,10 @@ export default function FlashCardsClient() {
     <div className="app-shell flex flex-col py-4">
       <div className="mb-4">
         <StudyScopePicker />
+      </div>
+
+      <div className="mb-4">
+        <ScopeProgressBar progress={scope} showModule />
       </div>
 
       <div className="mb-4 flex items-center justify-between">
@@ -112,6 +144,7 @@ export default function FlashCardsClient() {
           onActionComplete={goNext}
           onProgressSaved={() => {
             void refreshBadges();
+            void refreshScope();
           }}
         />
       )}
