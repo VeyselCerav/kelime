@@ -157,6 +157,7 @@ export async function POST(request: Request, { params }: Ctx) {
       .map((w) => ({
         english: w.english,
         turkish: w.turkish,
+        category: w.category ?? null,
         moduleId: id,
         addedBy,
       }));

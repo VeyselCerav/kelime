@@ -2,18 +2,21 @@
 
 import { useModule } from '../context/ModuleContext';
 
-/** Kartlar / Quiz için modül + 20’lik alt grup seçici */
+/** Kartlar / Quiz için modül + alt grup seçici */
 export default function StudyScopePicker() {
   const {
     modules,
     selectedModuleId,
     setSelectedModuleId,
+    selectedModule,
     groups,
     selectedGroupIndex,
     setSelectedGroupIndex,
     selectedGroup,
     isLoading,
   } = useModule();
+
+  const namedGroups = selectedModule?.groupMode === 'category';
 
   if (isLoading) {
     return <div className="h-24 animate-pulse rounded-2xl bg-surface-container" />;
@@ -51,10 +54,13 @@ export default function StudyScopePicker() {
                     ? 'Genel'
                     : m.slug === 'en-sik-cikan'
                       ? 'En Sık Çıkan'
-                      : m.name}
+                      : m.slug === 'tense-anahtar'
+                        ? 'Tense'
+                        : m.name}
                 </p>
                 <p className="text-[11px] text-on-surface-variant">
-                  {m.wordCount} kelime · {m.groupCount ?? Math.ceil(m.wordCount / 20)} grup
+                  {m.wordCount} kelime · {m.groupCount ?? groups.length}{' '}
+                  {m.groupMode === 'category' ? 'zaman' : 'grup'}
                 </p>
               </button>
             );
@@ -67,7 +73,7 @@ export default function StudyScopePicker() {
           htmlFor="subgroup-select"
           className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-outline"
         >
-          Alt grup (20’şer)
+          {namedGroups ? 'Zaman / tense' : 'Alt grup (20’şer)'}
         </label>
         {groups.length === 0 ? (
           <p className="text-sm text-on-surface-variant">Bu modülde kelime yok.</p>
@@ -81,7 +87,9 @@ export default function StudyScopePicker() {
             >
               {groups.map((g) => (
                 <option key={g.index} value={g.index}>
-                  {g.label} · {g.start}–{g.end} ({g.count} kelime)
+                  {namedGroups
+                    ? `${g.label} (${g.count} kelime)`
+                    : `${g.label} · ${g.start}–${g.end} (${g.count} kelime)`}
                 </option>
               ))}
             </select>
@@ -97,8 +105,14 @@ export default function StudyScopePicker() {
           <p className="mt-2 text-xs text-on-surface-variant">
             Seçili:{' '}
             <span className="font-semibold text-primary">{selectedGroup.label}</span>
-            {' · '}
-            {selectedGroup.start}–{selectedGroup.end}
+            {namedGroups ? (
+              <> · {selectedGroup.count} kelime</>
+            ) : (
+              <>
+                {' · '}
+                {selectedGroup.start}–{selectedGroup.end}
+              </>
+            )}
           </p>
         )}
       </div>

@@ -21,6 +21,8 @@ export interface ModuleInfo {
   sortOrder: number;
   wordCount: number;
   groupCount?: number;
+  groupMode?: 'fixed' | 'category';
+  groups?: WordGroupInfo[];
 }
 
 interface ModuleContextType {
@@ -87,6 +89,9 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
 
   const groups = useMemo(() => {
     if (!selectedModule) return [];
+    if (selectedModule.groups && selectedModule.groups.length > 0) {
+      return selectedModule.groups;
+    }
     return buildGroups(
       selectedModule.wordCount,
       selectedModule.name,

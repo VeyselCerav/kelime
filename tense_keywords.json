@@ -1,0 +1,69 @@
+{
+  "Simple Present Tense": [
+    { "english": "today", "turkish": "bugün" },
+    { "english": "every morning / every day", "turkish": "her sabah / her gün" },
+    { "english": "twice a week / third time in a year", "turkish": "haftada 2 kez / yılda 3 kez" },
+    { "english": "frequency adverbs (always, rarely, seldom, occasionally, often)", "turkish": "sıklık zarfları" },
+    { "english": "date back / trace back / go back", "turkish": "tarihe dayanır" }
+  ],
+  "Present Continuous Tense": [
+    { "english": "now", "turkish": "şu anda" },
+    { "english": "at the moment", "turkish": "şu anda" },
+    { "english": "at present", "turkish": "şu anda" },
+    { "english": "right now", "turkish": "şu anda" },
+    { "english": "nowadays", "turkish": "bu günlerde" },
+    { "english": "these days", "turkish": "bu günlerde" },
+    { "english": "this week / day / night", "turkish": "bu hafta / bugün / bu akşam" },
+    { "english": "day by day", "turkish": "günden güne" },
+    { "english": "more and more", "turkish": "git gide" },
+    { "english": "increasingly", "turkish": "git gide" },
+    { "english": "gradually", "turkish": "git gide" }
+  ],
+  "Present Perfect Tense & Present Perfect Continuous Tense": [
+    { "english": "since", "turkish": "-den beri" },
+    { "english": "for", "turkish": "-den beri" },
+    { "english": "already", "turkish": "çoktan, zaten" },
+    { "english": "yet", "turkish": "henüz" },
+    { "english": "just", "turkish": "henüz" },
+    { "english": "never", "turkish": "asla" },
+    { "english": "ever", "turkish": "asla" },
+    { "english": "recently", "turkish": "son zamanlarda" },
+    { "english": "lately", "turkish": "son zamanlarda" },
+    { "english": "recent", "turkish": "son zamanlarda" },
+    { "english": "up to now", "turkish": "şu ana kadar" },
+    { "english": "until now", "turkish": "şimdiye kadar" },
+    { "english": "so far", "turkish": "şimdiye kadar" },
+    { "english": "this morning / this term", "turkish": "bu sabah / bu dönem" }
+  ],
+  "Simple Past Tense": [
+    { "english": "last", "turkish": "geçer" },
+    { "english": "ago", "turkish": "önce" },
+    { "english": "yesterday", "turkish": "dün" },
+    { "english": "in the past", "turkish": "geçmişte" },
+    { "english": "once", "turkish": "bir zamanlar" },
+    { "english": "in 1988", "turkish": "1988'de" },
+    { "english": "between 1963 and 1984", "turkish": "1963 ve 1984 arasında" },
+    { "english": "in / during the 1970s", "turkish": "1970'ler boyunca" },
+    { "english": "from 1997 and 2017", "turkish": "1997'den 2017'ye" },
+    { "english": "ancient", "turkish": "eski" },
+    { "english": "previous", "turkish": "önceden" },
+    { "english": "until recently", "turkish": "bu zamana dek" }
+  ],
+  "Past Perfect Tense & Past Perfect Continuous Tense": [
+    { "english": "by 2015", "turkish": "2015 itibariyle (Öncelik Simple Past Tensededir)" },
+    { "english": "as of 2015", "turkish": "2015 itibariyle (Öncelik Simple Past Tensededir)" }
+  ],
+  "Future Tense": [
+    { "english": "tomorrow", "turkish": "yarın" },
+    { "english": "next year / day", "turkish": "gelecek yıl / gelecek gün" },
+    { "english": "in / within three hours / years", "turkish": "içinde / 3 yıl içinde" },
+    { "english": "the following year / day", "turkish": "sonraki yıl / sonraki gün" },
+    { "english": "in 2080", "turkish": "2080'de" },
+    { "english": "in the 22nd century", "turkish": "22. yüzyılda" },
+    { "english": "soon", "turkish": "yakın zamanda" }
+  ],
+  "Future Perfect Tense & Future Perfect Continuous Tense": [
+    { "english": "by 2025", "turkish": "2025 itibariyle (Öncelik Future Tensededir)" },
+    { "english": "as of 2025", "turkish": "2025 itibariyle (Öncelik Future Tensededir)" }
+  ]
+}

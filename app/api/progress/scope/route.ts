@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       prisma.word.findMany({
         where: { moduleId },
         orderBy: { id: 'asc' },
-        select: { id: true },
+        select: { id: true, category: true },
       }),
       prisma.learnedWord.findMany({
         where: {
@@ -49,11 +49,10 @@ export async function GET(request: Request) {
       moduleName: mod.name,
       moduleSlug: mod.slug,
       groupIndex,
-      wordIdsAsc: words.map((w) => w.id),
+      words,
       learnedIdSet,
     });
 
-    // Modül geneli özet
     const moduleLearned = words.filter((w) => learnedIdSet.has(w.id)).length;
 
     return NextResponse.json({

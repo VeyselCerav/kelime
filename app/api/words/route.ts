@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { groupPagination } from '@/lib/subgroups';
+import { findWordsForGroup } from '@/lib/module-groups';
 import { weightedShuffle } from '@/lib/study-queue';
 import { authOptions } from '../auth/[...nextauth]/route';
 
@@ -30,16 +30,12 @@ export async function GET(request: Request) {
     let words;
     if (groupParam && resolvedModuleId) {
       const groupIndex = Math.max(1, parseInt(groupParam, 10) || 1);
-      const { skip, take } = groupPagination(groupIndex);
-      words = await prisma.word.findMany({
-        where,
-        orderBy: { id: 'asc' },
-        skip,
-        take,
-        include: {
-          module: { select: { id: true, slug: true, name: true } },
-        },
+      const result = await findWordsForGroup({
+        moduleId: resolvedModuleId,
+        groupIndex,
+        includeModule: true,
       });
+      words = result.words;
     } else {
       words = await prisma.word.findMany({
         where,
@@ -50,7 +46,6 @@ export async function GET(request: Request) {
       });
     }
 
-    // Çalışma modu: öğrenme durumu + ağırlıklı sıra
     if (study) {
       const session = await getServerSession(authOptions);
       let learnedSet = new Set<number>();
@@ -92,7 +87,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { english, turkish, moduleId, week } = body;
+    const { english, turkish, moduleId, week, category } = body;
     const resolvedModuleId = moduleId ?? week;
 
     if (!english || !turkish || !resolvedModuleId) {
@@ -107,6 +102,10 @@ export async function POST(request: Request) {
         english: String(english).trim(),
         turkish: String(turkish).trim(),
         moduleId: parseInt(String(resolvedModuleId), 10),
+        category:
+          typeof category === 'string' && category.trim()
+            ? category.trim()
+            : null,
         addedBy: body.addedBy || 'api',
       },
     });

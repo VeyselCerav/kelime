@@ -4,8 +4,10 @@ export const GROUP_SIZE = 20;
 export function moduleShortName(name: string, slug?: string): string {
   if (slug === 'genel') return 'Genel';
   if (slug === 'en-sik-cikan') return 'En Sık Çıkan';
+  if (slug === 'tense-anahtar') return 'Tense';
   if (name.toLowerCase().includes('sık')) return 'En Sık Çıkan';
   if (name.toLowerCase().includes('genel')) return 'Genel';
+  if (name.toLowerCase().includes('tense')) return 'Tense';
   return name.replace(/\s+Kelimeler$/i, '').trim() || name;
 }
 
@@ -24,6 +26,8 @@ export interface WordGroupInfo {
   start: number; // 1-based inclusive
   end: number; // 1-based inclusive
   count: number;
+  /** Named subgroup (e.g. tense name); absent for fixed 20-word groups */
+  category?: string;
 }
 
 export function buildGroups(

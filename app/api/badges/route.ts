@@ -34,7 +34,10 @@ export async function GET() {
             id: true,
             slug: true,
             name: true,
-            words: { select: { id: true }, orderBy: { id: 'asc' } },
+            words: {
+              select: { id: true, category: true },
+              orderBy: { id: 'asc' },
+            },
           },
         }),
         prisma.learnedWord.findMany({
@@ -52,7 +55,7 @@ export async function GET() {
         id: m.id,
         slug: m.slug,
         name: m.name,
-        wordIdsAsc: m.words.map((w) => w.id),
+        words: m.words,
       })),
       learnedIdSet,
     });

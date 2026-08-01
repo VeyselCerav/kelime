@@ -1,6 +1,10 @@
 /** Modül JSON import yardımcıları */
 
-export type ParsedWord = { english: string; turkish: string };
+export type ParsedWord = {
+  english: string;
+  turkish: string;
+  category?: string;
+};
 
 /** Türkçe karakterleri slug’a çevir */
 export function slugifyModuleName(name: string): string {
@@ -31,44 +35,79 @@ export function slugifyModuleName(name: string): string {
   return base || 'modul';
 }
 
+function pushWord(
+  out: ParsedWord[],
+  seen: Set<string>,
+  engRaw: unknown,
+  trRaw: unknown,
+  category?: string
+) {
+  if (typeof engRaw !== 'string' || typeof trRaw !== 'string') return;
+  const english = engRaw.trim();
+  const turkish = trRaw.trim();
+  if (!english || !turkish) return;
+  const key = `${category ?? ''}::${english.toLowerCase()}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  out.push(category ? { english, turkish, category } : { english, turkish });
+}
+
+function parseRowList(
+  list: unknown[],
+  out: ParsedWord[],
+  seen: Set<string>,
+  category?: string
+) {
+  for (const item of list) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    pushWord(
+      out,
+      seen,
+      row.word ?? row.english ?? row.en,
+      row.turkish ?? row.tr ?? row.meaning ?? row.translation,
+      category
+    );
+  }
+}
+
 /**
  * Desteklenen formatlar:
  * - { entries: [{ word|english, turkish|tr }] }
  * - [{ english|word, turkish|tr }]
+ * - { "Tense Name": [{ english, turkish }, ...], ... }  (kategorili)
  */
 export function parseWordJson(data: unknown): ParsedWord[] {
-  let list: unknown[] = [];
+  const out: ParsedWord[] = [];
+  const seen = new Set<string>();
 
   if (Array.isArray(data)) {
-    list = data;
+    parseRowList(data, out, seen);
   } else if (
     data &&
     typeof data === 'object' &&
     Array.isArray((data as { entries?: unknown }).entries)
   ) {
-    list = (data as { entries: unknown[] }).entries;
+    parseRowList((data as { entries: unknown[] }).entries, out, seen);
+  } else if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    const keys = Object.keys(obj);
+    const allArrays =
+      keys.length > 0 && keys.every((k) => Array.isArray(obj[k]));
+
+    if (!allArrays) {
+      throw new Error(
+        'JSON formatı geçersiz. Beklenen: { "entries": [...] }, [ ... ] veya { "Kategori": [...] }'
+      );
+    }
+
+    for (const category of keys) {
+      parseRowList(obj[category] as unknown[], out, seen, category);
+    }
   } else {
     throw new Error(
-      'JSON formatı geçersiz. Beklenen: { "entries": [...] } veya [ ... ]'
+      'JSON formatı geçersiz. Beklenen: { "entries": [...] }, [ ... ] veya { "Kategori": [...] }'
     );
-  }
-
-  const out: ParsedWord[] = [];
-  const seen = new Set<string>();
-
-  for (const item of list) {
-    if (!item || typeof item !== 'object') continue;
-    const row = item as Record<string, unknown>;
-    const engRaw = row.word ?? row.english ?? row.en;
-    const trRaw = row.turkish ?? row.tr ?? row.meaning ?? row.translation;
-    if (typeof engRaw !== 'string' || typeof trRaw !== 'string') continue;
-    const english = engRaw.trim();
-    const turkish = trRaw.trim();
-    if (!english || !turkish) continue;
-    const key = english.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ english, turkish });
   }
 
   if (out.length === 0) {

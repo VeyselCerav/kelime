@@ -6,6 +6,7 @@ import {
   parseWordJson,
   slugifyModuleName,
 } from '@/lib/module-import';
+import { buildModuleGroups } from '@/lib/module-groups';
 import { groupCountFromTotal } from '@/lib/subgroups';
 
 async function requireAdmin() {
@@ -25,19 +26,32 @@ export async function GET() {
 
     const modules = await prisma.module.findMany({
       orderBy: { sortOrder: 'asc' },
-      include: { _count: { select: { words: true } } },
+      include: {
+        words: {
+          select: { id: true, category: true },
+          orderBy: { id: 'asc' },
+        },
+      },
     });
 
     return NextResponse.json(
-      modules.map((m) => ({
-        id: m.id,
-        slug: m.slug,
-        name: m.name,
-        description: m.description,
-        sortOrder: m.sortOrder,
-        wordCount: m._count.words,
-        groupCount: groupCountFromTotal(m._count.words),
-      }))
+      modules.map((m) => {
+        const meta = buildModuleGroups({
+          words: m.words,
+          moduleName: m.name,
+          moduleSlug: m.slug,
+        });
+        return {
+          id: m.id,
+          slug: m.slug,
+          name: m.name,
+          description: m.description,
+          sortOrder: m.sortOrder,
+          wordCount: m.words.length,
+          groupCount: meta.groups.length,
+          groupMode: meta.groupMode,
+        };
+      })
     );
   } catch (error) {
     console.error('Admin modül listesi:', error);
@@ -105,6 +119,7 @@ export async function POST(request: Request) {
     const data = words.map((w) => ({
       english: w.english,
       turkish: w.turkish,
+      category: w.category ?? null,
       moduleId: module.id,
       addedBy,
     }));

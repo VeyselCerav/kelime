@@ -37,6 +37,7 @@ model Word {
   id          Int             @id @default(autoincrement())
   english     String
   turkish     String
+  category    String?
   moduleId    Int
   module      Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   addedBy     String
@@ -45,6 +46,7 @@ model Word {
   unlearnedBy UnlearnedWord[]
 
   @@unique([moduleId, english])
+  @@index([moduleId, category])
 }
 
 model UnlearnedWord {

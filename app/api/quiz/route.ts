@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { getUserFromToken } from '@/lib/auth';
-import { groupPagination } from '@/lib/subgroups';
+import { findWordsForGroup } from '@/lib/module-groups';
 import { weightedShuffle } from '@/lib/study-queue';
 import { authOptions } from '../auth/[...nextauth]/route';
 
@@ -29,13 +29,11 @@ export async function GET(request: Request) {
     let words;
     if (groupParam && moduleId) {
       const groupIndex = Math.max(1, parseInt(groupParam, 10) || 1);
-      const { skip, take } = groupPagination(groupIndex);
-      words = await prisma.word.findMany({
-        where: { moduleId },
-        orderBy: { id: 'asc' },
-        skip,
-        take,
+      const result = await findWordsForGroup({
+        moduleId,
+        groupIndex,
       });
+      words = result.words;
     } else {
       words = await prisma.word.findMany({
         where: moduleId ? { moduleId } : undefined,
@@ -43,7 +41,6 @@ export async function GET(request: Request) {
       });
     }
 
-    // Ağırlıklı sıra: ezberlenmeyen ×3
     const session = await getServerSession(authOptions);
     let learnedSet = new Set<number>();
     if (session?.user?.id && words.length) {
@@ -62,7 +59,6 @@ export async function GET(request: Request) {
       words.map((w) => ({ ...w, isLearned: learnedSet.has(w.id) }))
     );
 
-    // Çeldiriciler için aynı modülden ek kelimeler
     const distractorPool =
       moduleId && words.length < 8
         ? await prisma.word.findMany({

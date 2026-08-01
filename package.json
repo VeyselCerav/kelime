@@ -9,7 +9,8 @@
     "lint": "next lint",
     "postinstall": "prisma generate --no-engine",
     "create-admin": "ts-node scripts/create-admin.ts",
-    "migrate-modules": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/migrate-modules.ts"
+    "migrate-modules": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/migrate-modules.ts",
+    "import-tense": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/import-tense.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

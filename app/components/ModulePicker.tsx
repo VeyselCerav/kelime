@@ -35,7 +35,9 @@ export default function ModulePicker({ compact = false }: { compact?: boolean })
             ? 'local_fire_department'
             : m.slug === 'genel'
               ? 'auto_stories'
-              : 'folder_open';
+              : m.slug === 'tense-anahtar'
+                ? 'schedule'
+                : 'folder_open';
         return (
           <button
             key={m.id}
