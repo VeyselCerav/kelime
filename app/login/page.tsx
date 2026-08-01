@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 function LoginForm() {
@@ -10,7 +10,6 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
   const registered = searchParams.get('registered') === 'true';
@@ -30,8 +29,9 @@ function LoginForm() {
       if (result?.error) {
         setError(result.error);
       } else if (result?.ok) {
-        router.push(callbackUrl || '/');
-        router.refresh();
+        // Soft navigate oturum cookie’sini bazen yakalayamıyor; tam yükleme güvenli
+        window.location.assign(callbackUrl || '/');
+        return;
       }
     } catch {
       setError('Giriş yapılırken bir hata oluştu');
