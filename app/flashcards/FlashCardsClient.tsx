@@ -140,11 +140,15 @@ export default function FlashCardsClient() {
           turkish={current.turkish}
           wordId={Number(current.id)}
           isAuthenticated={!!session}
-          progressLabel={selectedGroup?.label}
+          progressLabel={
+            mode === 'practice'
+              ? 'Tekrar · Ezberleyemediklerim'
+              : selectedGroup?.label
+          }
           onActionComplete={goNext}
           onProgressSaved={() => {
             void refreshBadges();
-            void refreshScope();
+            if (mode !== 'practice') void refreshScope();
           }}
         />
       )}

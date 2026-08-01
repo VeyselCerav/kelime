@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import Quiz from '../components/Quiz';
 import StudyScopePicker from '../components/StudyScopePicker';
 import ScopeProgressBar, {
   ScopeProgressView,
 } from '../components/ScopeProgressBar';
 import { useModule } from '../context/ModuleContext';
-import { useBadgeContext } from '../context/BadgeContext';
 
 interface Question {
   id: number;
@@ -18,16 +18,52 @@ interface Question {
   wordId: number;
 }
 
+interface PracticeWord {
+  id: number;
+  english: string;
+  turkish: string;
+}
+
+function buildPracticeQuestions(words: PracticeWord[]): Question[] {
+  const pool = words.length >= 4 ? words : words;
+  return words.map((word) => {
+    const others = pool.filter((w) => w.id !== word.id);
+    const wrong = [...others]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
+      .map((w) => w.turkish);
+    while (wrong.length < 3 && others.length > wrong.length) {
+      const extra = others.find((w) => !wrong.includes(w.turkish));
+      if (!extra) break;
+      wrong.push(extra.turkish);
+    }
+    const options = [...wrong.slice(0, 3), word.turkish].sort(
+      () => Math.random() - 0.5
+    );
+    return {
+      id: word.id,
+      question: `"${word.english}" kelimesinin Türkçe anlamı nedir?`,
+      options,
+      answer: word.turkish,
+      wordId: word.id,
+    };
+  });
+}
+
 export default function QuizPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [scope, setScope] = useState<ScopeProgressView | null>(null);
+  const [practiceTitle, setPracticeTitle] = useState<string | null>(null);
   const { data: session } = useSession();
   const { selectedModuleId, selectedGroup, selectedGroupIndex } = useModule();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get('mode');
 
   const refreshScope = useCallback(async () => {
-    if (!selectedModuleId || !selectedGroupIndex || !session) return;
+    if (!selectedModuleId || !selectedGroupIndex || !session || mode === 'practice')
+      return;
     try {
       const res = await fetch(
         `/api/progress/scope?moduleId=${selectedModuleId}&group=${selectedGroupIndex}`
@@ -46,14 +82,46 @@ export default function QuizPage() {
     } catch {
       /* ignore */
     }
-  }, [selectedModuleId, selectedGroupIndex, session]);
+  }, [selectedModuleId, selectedGroupIndex, session, mode]);
 
   useEffect(() => {
+    if (mode === 'practice') {
+      setIsLoading(true);
+      try {
+        const raw = localStorage.getItem('practiceWords');
+        const metaRaw = localStorage.getItem('practiceMeta');
+        const words: PracticeWord[] = raw ? JSON.parse(raw) : [];
+        if (metaRaw) {
+          const meta = JSON.parse(metaRaw);
+          setPracticeTitle(
+            meta.moduleName
+              ? `${meta.moduleName} · Ezberleyemediklerim`
+              : 'Tekrar quiz'
+          );
+        } else {
+          setPracticeTitle('Tekrar quiz');
+        }
+        if (words.length < 4) {
+          setError('Quiz için en az 4 kelime gerekli.');
+          setQuestions([]);
+        } else {
+          setQuestions(buildPracticeQuestions(words));
+          setError('');
+        }
+      } catch {
+        setError('Tekrar listesi okunamadı');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     if (!selectedModuleId || !selectedGroupIndex) return;
 
     const fetchQuestions = async () => {
       setIsLoading(true);
       setError('');
+      setPracticeTitle(null);
       try {
         const url = new URL('/api/quiz', window.location.origin);
         url.searchParams.set('moduleId', selectedModuleId.toString());
@@ -77,22 +145,33 @@ export default function QuizPage() {
     };
 
     fetchQuestions();
-  }, [selectedModuleId, selectedGroupIndex, refreshScope]);
+  }, [selectedModuleId, selectedGroupIndex, refreshScope, mode]);
 
   return (
     <div className="app-shell py-4">
-      <div className="mb-6">
-        <StudyScopePicker />
-      </div>
+      {mode !== 'practice' && (
+        <>
+          <div className="mb-6">
+            <StudyScopePicker />
+          </div>
+          <div className="mb-4">
+            <ScopeProgressBar progress={scope} showModule />
+          </div>
+        </>
+      )}
 
-      <div className="mb-4">
-        <ScopeProgressBar progress={scope} showModule />
-      </div>
-
-      <h1 className="mb-2 font-display text-xl font-bold text-on-surface">Quiz</h1>
-      {selectedGroup && (
+      <h1 className="mb-2 font-display text-xl font-bold text-on-surface">
+        {practiceTitle || 'Quiz'}
+      </h1>
+      {mode !== 'practice' && selectedGroup && (
         <p className="mb-6 text-sm text-on-surface-variant">
           {selectedGroup.label} · {selectedGroup.start}–{selectedGroup.end}
+        </p>
+      )}
+      {mode === 'practice' && (
+        <p className="mb-6 text-sm text-on-surface-variant">
+          Ezberlediğin kelimeler hesabından silinmez; sadece tekrar listesinden
+          düşer.
         </p>
       )}
 

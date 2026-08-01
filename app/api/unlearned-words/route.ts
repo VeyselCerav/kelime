@@ -3,22 +3,21 @@ import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '../auth/[...nextauth]/route';
 
-// Ezberlenemeyen kelimeleri getir
-export async function GET(request: Request) {
+/** Ezberlenemeyen kelimeler — modül bilgisiyle */
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Oturum açmanız gerekiyor' }, { status: 401 });
     }
 
-    const userId = typeof session.user.id === 'string' ? parseInt(session.user.id) : session.user.id;
+    const userId =
+      typeof session.user.id === 'string'
+        ? parseInt(session.user.id, 10)
+        : session.user.id;
 
-    // Kullanıcının var olup olmadığını kontrol et
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
     }
@@ -30,26 +29,68 @@ export async function GET(request: Request) {
           select: {
             id: true,
             english: true,
-            turkish: true
-          }
+            turkish: true,
+            moduleId: true,
+            module: {
+              select: { id: true, slug: true, name: true, sortOrder: true },
+            },
+          },
         },
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: { createdAt: 'desc' },
     });
 
-    // API yanıtını düzenle
-    const formattedWords = unlearnedWords.map(uw => ({
+    const formattedWords = unlearnedWords.map((uw) => ({
       id: uw.id,
       word: {
         id: uw.word.id,
         english: uw.word.english,
-        turkish: uw.word.turkish
-      }
+        turkish: uw.word.turkish,
+        moduleId: uw.word.moduleId,
+        module: uw.word.module,
+      },
     }));
 
-    return NextResponse.json(formattedWords);
+    // Modül bazlı grup
+    const byModule = new Map<
+      number,
+      {
+        moduleId: number;
+        slug: string;
+        name: string;
+        sortOrder: number;
+        words: { id: number; english: string; turkish: string }[];
+      }
+    >();
+
+    for (const row of formattedWords) {
+      const m = row.word.module;
+      if (!m) continue;
+      if (!byModule.has(m.id)) {
+        byModule.set(m.id, {
+          moduleId: m.id,
+          slug: m.slug,
+          name: m.name,
+          sortOrder: m.sortOrder,
+          words: [],
+        });
+      }
+      byModule.get(m.id)!.words.push({
+        id: row.word.id,
+        english: row.word.english,
+        turkish: row.word.turkish,
+      });
+    }
+
+    const modules = Array.from(byModule.values()).sort(
+      (a, b) => a.sortOrder - b.sortOrder
+    );
+
+    return NextResponse.json({
+      words: formattedWords,
+      modules,
+      total: formattedWords.length,
+    });
   } catch (error) {
     console.error('Ezberlenemeyen kelimeler getirme hatası:', error);
     return NextResponse.json(
@@ -59,57 +100,30 @@ export async function GET(request: Request) {
   }
 }
 
-// Yeni ezberlenemeyen kelime ekle
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Oturum açmanız gerekiyor' }, { status: 401 });
     }
 
-    // Google ile giriş yapan kullanıcılar için id'yi integer'a dönüştür
     let userId: number;
     try {
-      userId = parseInt(session.user.id);
-      if (isNaN(userId)) {
-        throw new Error('Geçersiz kullanıcı ID');
-      }
-    } catch (error) {
+      userId = parseInt(session.user.id, 10);
+      if (isNaN(userId)) throw new Error('Geçersiz kullanıcı ID');
+    } catch {
       return NextResponse.json({ error: 'Geçersiz kullanıcı ID' }, { status: 400 });
     }
 
     const { wordId } = await request.json();
-
     if (!wordId) {
-      return NextResponse.json({ error: 'Kelime ID\'si gereklidir' }, { status: 400 });
+      return NextResponse.json({ error: 'wordId gerekli' }, { status: 400 });
     }
 
-    // Kullanıcının var olup olmadığını kontrol et
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
-    }
-
-    // Kelimenin var olup olmadığını kontrol et
-    const word = await prisma.word.findUnique({
-      where: { id: wordId },
-    });
-
-    if (!word) {
-      return NextResponse.json({ error: 'Kelime bulunamadı' }, { status: 404 });
-    }
-
-    // Kelime zaten eklenmiş mi kontrol et
     const existingWord = await prisma.unlearnedWord.findUnique({
       where: {
-        userId_wordId: {
-          userId,
-          wordId,
-        },
+        userId_wordId: { userId, wordId: Number(wordId) },
       },
     });
 
@@ -117,36 +131,25 @@ export async function POST(request: Request) {
       return NextResponse.json(existingWord);
     }
 
-    // Yeni kelimeyi ekle
     const unlearnedWord = await prisma.unlearnedWord.create({
       data: {
-        user: {
-          connect: { id: userId }
-        },
-        word: {
-          connect: { id: wordId }
-        }
-      },
-      include: {
-        word: true,
+        userId,
+        wordId: Number(wordId),
       },
     });
 
-    // LearnedWord tablosunu güncelle
+    // Ezberlenen kaydı silme — sadece isLearned=false yap (geçmiş kaybolmasın)
     await prisma.learnedWord.upsert({
       where: {
-        userId_wordId: {
-          userId,
-          wordId,
-        },
+        userId_wordId: { userId, wordId: Number(wordId) },
       },
       create: {
         userId,
-        wordId,
-        isLearned: false
+        wordId: Number(wordId),
+        isLearned: false,
       },
       update: {
-        isLearned: false
+        isLearned: false,
       },
     });
 
@@ -154,59 +157,48 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Ezberlenemeyen kelime ekleme hatası:', error);
     return NextResponse.json(
-      { error: 'Kelime eklenirken bir hata oluştu' },
+      { error: 'Kelime eklenirken bir hata oluştu.' },
       { status: 500 }
     );
   }
 }
 
-// Ezberlenemeyen kelimeyi kaldır
 export async function DELETE(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Oturum açmanız gerekiyor' }, { status: 401 });
     }
 
-    const userId = typeof session.user.id === 'string' ? parseInt(session.user.id) : session.user.id;
+    const userId = parseInt(session.user.id, 10);
     const { wordId } = await request.json();
 
     if (!wordId) {
-      return NextResponse.json({ error: 'Kelime ID\'si gereklidir' }, { status: 400 });
+      return NextResponse.json({ error: 'wordId gerekli' }, { status: 400 });
     }
 
-    // Önce kaydın var olup olmadığını kontrol et
     const existingWord = await prisma.unlearnedWord.findUnique({
       where: {
-        userId_wordId: {
-          userId,
-          wordId,
-        },
+        userId_wordId: { userId, wordId: Number(wordId) },
       },
     });
 
-    // Kayıt yoksa başarılı yanıt dön
     if (!existingWord) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ error: 'Kayıt bulunamadı' }, { status: 404 });
     }
 
-    // Kayıt varsa sil
     await prisma.unlearnedWord.delete({
-      where: {
-        userId_wordId: {
-          userId,
-          wordId,
-        },
-      },
+      where: { id: existingWord.id },
     });
 
-    return NextResponse.json({ success: true });
+    // LearnedWord satırını silme — ezber geçmişi korunur
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Ezberlenemeyen kelime silme hatası:', error);
     return NextResponse.json(
-      { error: 'Kelime silinirken bir hata oluştu.' },
+      { error: 'Kelime kaldırılırken bir hata oluştu.' },
       { status: 500 }
     );
   }
-} 
+}

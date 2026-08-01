@@ -145,6 +145,41 @@ export default function StatsPage() {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-xl font-semibold text-on-surface">
+                Ezberleyemediklerim
+              </h2>
+              <Link
+                href="/unlearned-words"
+                className="text-xs font-bold text-primary hover:underline"
+              >
+                Tümü
+              </Link>
+            </div>
+            <Link
+              href="/unlearned-words"
+              className="btn-tactile flex items-center justify-between rounded-2xl border border-outline-variant/40 bg-cream px-4 py-4 shadow-organic"
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-secondary">
+                  replay
+                </span>
+                <div>
+                  <p className="font-semibold text-on-surface">
+                    Modül modül tekrar et
+                  </p>
+                  <p className="text-xs text-on-surface-variant">
+                    Kart veya quiz ile çalış; ezberlediklerin silinmez
+                  </p>
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-outline">
+                chevron_right
+              </span>
+            </Link>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl font-semibold text-on-surface">
                 Son Sınavlar
               </h2>
               <Link href="/sinav" className="text-xs font-bold text-primary hover:underline">

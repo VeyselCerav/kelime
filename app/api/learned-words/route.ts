@@ -101,17 +101,24 @@ export async function POST(request: Request) {
       }
     } else {
       try {
-        // Kelimeyi öğrenilmemiş olarak işaretle
-        await prisma.learnedWord.delete({
+        // Ezber kaydını silme — isLearned=false yap (geçmiş korunsun)
+        await prisma.learnedWord.upsert({
           where: {
             userId_wordId: {
               userId,
               wordId,
             },
           },
+          create: {
+            userId,
+            wordId,
+            isLearned: false,
+          },
+          update: {
+            isLearned: false,
+          },
         });
 
-        // Ezberlenemeyenler listesine ekle
         await prisma.unlearnedWord.upsert({
           where: {
             userId_wordId: {
@@ -126,28 +133,7 @@ export async function POST(request: Request) {
           update: {},
         });
       } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-          if (error.code === 'P2025') {
-            // Kelime zaten öğrenilmemiş durumda, sadece ezberlenemeyenlere ekle
-            await prisma.unlearnedWord.upsert({
-              where: {
-                userId_wordId: {
-                  userId,
-                  wordId,
-                },
-              },
-              create: {
-                userId,
-                wordId,
-              },
-              update: {},
-            });
-          } else {
-            throw error;
-          }
-        } else {
-          throw error;
-        }
+        throw error;
       }
     }
 

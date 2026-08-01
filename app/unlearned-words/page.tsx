@@ -1,192 +1,204 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import UnlearnedQuiz from '../components/UnlearnedQuiz';
+import { useSession } from 'next-auth/react';
 
-interface Word {
-  id: number;
-  english: string;
-  turkish: string;
-}
-
-interface UnlearnedWord {
-  id: number;
-  word: Word;
+interface ModuleGroup {
+  moduleId: number;
+  slug: string;
+  name: string;
+  sortOrder: number;
+  words: { id: number; english: string; turkish: string }[];
 }
 
 export default function UnlearnedWordsPage() {
-  const [unlearnedWords, setUnlearnedWords] = useState<UnlearnedWord[]>([]);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [mode, setMode] = useState<'cards' | 'quiz'>('cards');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const [modules, setModules] = useState<ModuleGroup[]>([]);
+  const [total, setTotal] = useState(0);
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/check', {
-          credentials: 'include',
-        });
-        setIsAuthenticated(response.ok);
-      } catch (error) {
-        console.error('Auth check error:', error);
-        setIsAuthenticated(false);
-      }
-    };
+    if (status === 'unauthenticated') {
+      router.push('/login?callbackUrl=/unlearned-words');
+      return;
+    }
+    if (status !== 'authenticated') return;
 
-    checkAuth();
-    fetchUnlearnedWords();
-  }, []);
-
-  const fetchUnlearnedWords = async () => {
-    try {
+    const load = async () => {
       setIsLoading(true);
       setError('');
-      
-      const response = await fetch('/api/unlearned-words', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login');
-          return;
+      try {
+        const res = await fetch('/api/unlearned-words', { credentials: 'include' });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Yüklenemedi');
         }
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Kelimeler getirilirken bir hata oluştu');
+        const data = await res.json();
+        const list: ModuleGroup[] = Array.isArray(data.modules) ? data.modules : [];
+        setModules(list);
+        setTotal(data.total ?? list.reduce((s, m) => s + m.words.length, 0));
+        if (list.length) setOpenId(list[0].moduleId);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Hata');
+      } finally {
+        setIsLoading(false);
       }
+    };
+    void load();
+  }, [status, router]);
 
-      const data = await response.json();
-      
-      if (!Array.isArray(data)) {
-        throw new Error('Geçersiz veri formatı');
-      }
-      
-      setUnlearnedWords(data);
-    } catch (error) {
-      console.error('Ezberlenemeyen kelimeler yükleme hatası:', error);
-      setError(error instanceof Error ? error.message : 'Kelimeler yüklenirken bir hata oluştu');
-    } finally {
-      setIsLoading(false);
-    }
+  const startPractice = (group: ModuleGroup, mode: 'cards' | 'quiz') => {
+    // Learned kayıtlar DB’de kalır; sadece tekrar listesi localStorage’a yazılır
+    localStorage.setItem('practiceWords', JSON.stringify(group.words));
+    localStorage.setItem(
+      'practiceMeta',
+      JSON.stringify({
+        source: 'unlearned',
+        moduleId: group.moduleId,
+        moduleName: group.name,
+      })
+    );
+    window.location.href =
+      mode === 'cards' ? '/flashcards?mode=practice' : '/quiz?mode=practice';
   };
 
-  const removeFromUnlearned = async (wordId: number) => {
-    try {
-      const response = await fetch('/api/unlearned-words', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ wordId }),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Kelime kaldırılırken bir hata oluştu');
-      }
-
-      setUnlearnedWords(prev => prev.filter(uw => uw.word.id !== wordId));
-    } catch (error) {
-      setError('Kelime kaldırılırken bir hata oluştu');
-    }
-  };
-
-  if (isLoading) {
+  if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Yükleniyor...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-red-600">{error}</div>
-      </div>
-    );
-  }
-
-  if (unlearnedWords.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-600">
-          Ezberleyemediğiniz kelime bulunmuyor.
-        </div>
-      </div>
-    );
-  }
-
-  if (unlearnedWords.length < 4 && mode === 'quiz') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-600">
-          Test modu için en az 4 kelime gerekiyor.
-        </div>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+    <div className="app-shell space-y-6 py-4">
+      <div>
+        <Link
+          href="/stats"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          ← İstatistikler
+        </Link>
+        <h1 className="mt-2 font-display text-2xl font-bold text-on-surface">
           Ezberleyemediklerim
         </h1>
-        <div className="flex space-x-4">
-          <button
-            onClick={() => setMode('cards')}
-            className={`px-4 py-2 rounded-md ${
-              mode === 'cards'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Kelime Kartları
-          </button>
-          <button
-            onClick={() => setMode('quiz')}
-            className={`px-4 py-2 rounded-md ${
-              mode === 'quiz'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Test
-          </button>
-        </div>
+        <p className="mt-1 text-sm text-on-surface-variant">
+          Modül modül listelenir. Tekrar ederken ezberlediğin kelimeler geçmişinden
+          silinmez.
+        </p>
       </div>
 
-      {mode === 'cards' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {unlearnedWords.map(({ word }) => (
-            <div
-              key={word.id}
-              className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-            >
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {word.english}
-              </h3>
-              <p className="text-gray-600 mb-4">{word.turkish}</p>
-              <button
-                onClick={() => removeFromUnlearned(word.id)}
-                className="text-sm text-indigo-600 hover:text-indigo-800"
-              >
-                Öğrendim
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <UnlearnedQuiz
-          unlearnedWords={unlearnedWords}
-          onRemoveWord={removeFromUnlearned}
-          isAuthenticated={isAuthenticated}
-        />
+      {error && (
+        <p className="rounded-card bg-error/10 p-4 text-center text-error">{error}</p>
       )}
+
+      {!error && total === 0 && (
+        <div className="rounded-card bg-cream p-8 text-center shadow-organic">
+          <span className="material-symbols-outlined text-4xl text-primary">
+            check_circle
+          </span>
+          <p className="mt-3 font-display text-lg font-semibold text-on-surface">
+            Harika!
+          </p>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Şu an ezberleyemediğin kelime yok.
+          </p>
+          <Link
+            href="/flashcards"
+            className="mt-4 inline-block rounded-full bg-primary px-5 py-2 text-sm font-bold text-on-primary"
+          >
+            Kartlara git
+          </Link>
+        </div>
+      )}
+
+      {modules.length > 0 && (
+        <p className="text-sm font-semibold text-on-surface-variant">
+          Toplam {total} kelime · {modules.length} modül
+        </p>
+      )}
+
+      <div className="space-y-3">
+        {modules.map((m) => {
+          const open = openId === m.moduleId;
+          return (
+            <div
+              key={m.moduleId}
+              className="overflow-hidden rounded-2xl border border-outline-variant/40 bg-surface-container-lowest shadow-organic"
+            >
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? null : m.moduleId)}
+                className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+              >
+                <div className="min-w-0">
+                  <p className="font-display text-lg font-semibold text-on-surface">
+                    {m.name}
+                  </p>
+                  <p className="text-xs font-bold text-on-surface-variant">
+                    {m.words.length} kelime
+                  </p>
+                </div>
+                <span className="material-symbols-outlined text-on-surface-variant">
+                  {open ? 'expand_less' : 'expand_more'}
+                </span>
+              </button>
+
+              {open && (
+                <div className="border-t border-outline-variant/30 px-4 pb-4 pt-2">
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startPractice(m, 'cards')}
+                      className="btn-tactile inline-flex items-center gap-1 rounded-xl bg-secondary-container px-3 py-2 text-sm font-bold text-on-secondary-container"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        style
+                      </span>
+                      Kartlarla tekrar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={m.words.length < 4}
+                      onClick={() => startPractice(m, 'quiz')}
+                      className="btn-tactile inline-flex items-center gap-1 rounded-xl bg-primary-container px-3 py-2 text-sm font-bold text-on-primary-container disabled:opacity-40"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        quiz
+                      </span>
+                      Quiz ile tekrar
+                    </button>
+                  </div>
+                  {m.words.length < 4 && (
+                    <p className="mb-2 text-[11px] text-outline">
+                      Quiz için en az 4 kelime gerekir.
+                    </p>
+                  )}
+
+                  <ul className="max-h-72 space-y-2 overflow-y-auto">
+                    {m.words.map((w) => (
+                      <li
+                        key={w.id}
+                        className="rounded-xl bg-cream px-3 py-2.5"
+                      >
+                        <p className="font-semibold text-primary">{w.english}</p>
+                        <p className="text-sm text-on-surface-variant">
+                          {w.turkish}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
-} 
+}
