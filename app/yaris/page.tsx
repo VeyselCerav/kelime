@@ -58,9 +58,9 @@ export default function RacePage() {
   const matchIdRef = useRef<number | null>(null);
 
   const heartbeat = useCallback(async () => {
-    if (!selectedModuleId) return;
-    await fetch('/api/race/presence', {
+    const res = await fetch('/api/race/lobby', {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ready,
@@ -68,10 +68,6 @@ export default function RacePage() {
         groupIndex: selectedGroupIndex,
       }),
     });
-  }, [ready, selectedModuleId, selectedGroupIndex]);
-
-  const refreshLobby = useCallback(async () => {
-    const res = await fetch('/api/race/lobby');
     if (!res.ok) return;
     const data = await res.json();
     setReadyUsers(data.readyUsers || []);
@@ -81,27 +77,20 @@ export default function RacePage() {
       matchIdRef.current = data.activeMatchId;
       setMatchId(data.activeMatchId);
     }
-  }, []);
-
-  useEffect(() => {
-    if (status !== 'authenticated') return;
-    void heartbeat();
-    const t = window.setInterval(() => void heartbeat(), 2000);
-    return () => window.clearInterval(t);
-  }, [status, heartbeat]);
+  }, [ready, selectedModuleId, selectedGroupIndex]);
 
   useEffect(() => {
     if (status !== 'authenticated' || matchId) return;
-    void refreshLobby();
-    const t = window.setInterval(() => void refreshLobby(), 1000);
+    void heartbeat();
+    const t = window.setInterval(() => void heartbeat(), 1500);
     return () => window.clearInterval(t);
-  }, [status, matchId, refreshLobby]);
+  }, [status, matchId, heartbeat]);
 
   useEffect(() => {
     if (!matchId) return;
     let stop = false;
     const tick = async () => {
-      const res = await fetch(`/api/race/match/${matchId}`);
+      const res = await fetch(`/api/race/match/${matchId}`, { cache: 'no-store' });
       if (!res.ok || stop) return;
       const data = (await res.json()) as MatchPayload;
       setMatch((prev) => {
@@ -135,7 +124,7 @@ export default function RacePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Davet gönderilemedi');
-      void refreshLobby();
+      void heartbeat();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Hata');
     } finally {
@@ -160,7 +149,7 @@ export default function RacePage() {
         matchIdRef.current = data.matchId;
         setMatchId(data.matchId);
       } else {
-        void refreshLobby();
+        void heartbeat();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Hata');
@@ -185,7 +174,7 @@ export default function RacePage() {
     setMatchId(null);
     setMatch(null);
     submittedRef.current = false;
-    void refreshLobby();
+    void heartbeat();
   };
 
   if (status === 'loading') {

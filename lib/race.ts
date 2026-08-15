@@ -2,8 +2,8 @@ import { prisma } from '@/lib/prisma';
 import { findWordsForGroup } from '@/lib/module-groups';
 
 export const RACE_QUESTION_COUNT = 20;
-export const READY_WINDOW_MS = 20000;
-export const INVITE_TTL_MS = 60000;
+export const READY_WINDOW_MS = 45000;
+export const INVITE_TTL_MS = 90000;
 export const WIN_BONUS = 25;
 export const POINTS_PER_CORRECT = 2;
 

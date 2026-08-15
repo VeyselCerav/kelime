@@ -4,14 +4,43 @@ import { requireUserId } from '@/lib/race-session';
 import { INVITE_TTL_MS, READY_WINDOW_MS } from '@/lib/race';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
-export async function GET() {
-  const auth = await requireUserId();
-  if ('error' in auth) return auth.error;
-  const userId = auth.userId;
+const NO_STORE = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+};
+
+async function lobbyPayload(userId: number, body: {
+  ready?: boolean;
+  moduleId?: number | null;
+  groupIndex?: number;
+}) {
+  const ready = body.ready !== false;
+  const moduleId = body.moduleId ? Number(body.moduleId) : null;
+  const groupIndex = Math.max(1, Number(body.groupIndex || 1) || 1);
+
+  await prisma.racePresence.upsert({
+    where: { userId },
+    create: {
+      userId,
+      ready,
+      lastSeen: new Date(),
+      moduleId: Number.isFinite(moduleId) ? moduleId : null,
+      groupIndex,
+    },
+    update: {
+      ready,
+      lastSeen: new Date(),
+      moduleId: Number.isFinite(moduleId) ? moduleId : null,
+      groupIndex,
+    },
+  });
+
   const now = Date.now();
   const readyAfter = new Date(now - READY_WINDOW_MS);
   const inviteAfter = new Date(now - INVITE_TTL_MS);
+  const staleMatch = new Date(now - 3 * 60 * 1000);
 
   await prisma.raceInvite.updateMany({
     where: { status: 'pending', createdAt: { lt: inviteAfter } },
@@ -21,7 +50,7 @@ export async function GET() {
   await prisma.raceMatch.updateMany({
     where: {
       status: 'playing',
-      startedAt: { lt: new Date(now - 20 * 60 * 1000) },
+      startedAt: { lt: staleMatch },
     },
     data: { status: 'cancelled' },
   });
@@ -54,7 +83,7 @@ export async function GET() {
     prisma.raceMatch.findFirst({
       where: {
         status: 'playing',
-        startedAt: { gte: new Date(now - 20 * 60 * 1000) },
+        startedAt: { gte: staleMatch },
         OR: [{ player1Id: userId }, { player2Id: userId }],
       },
       orderBy: { createdAt: 'desc' },
@@ -65,7 +94,7 @@ export async function GET() {
   const playing = await prisma.raceMatch.findMany({
     where: {
       status: 'playing',
-      startedAt: { gte: new Date(now - 20 * 60 * 1000) },
+      startedAt: { gte: staleMatch },
     },
     select: { player1Id: true, player2Id: true },
   });
@@ -75,13 +104,13 @@ export async function GET() {
   }
 
   const readyUsers = readyRows
-    .filter((r) => !busyIds.has(r.userId))
+    .filter((r) => r.user && !busyIds.has(r.userId))
     .map((r) => ({
       id: r.user.id,
       username: r.user.username,
     }));
 
-  return NextResponse.json({
+  return {
     me,
     readyUsers,
     incomingInvites: incoming.map((i) => ({
@@ -95,5 +124,20 @@ export async function GET() {
       createdAt: i.createdAt,
     })),
     activeMatchId: active?.id ?? null,
-  });
+  };
+}
+
+export async function POST(request: Request) {
+  const auth = await requireUserId();
+  if ('error' in auth) return auth.error;
+  const body = await request.json().catch(() => ({}));
+  const data = await lobbyPayload(auth.userId, body);
+  return NextResponse.json(data, { headers: NO_STORE });
+}
+
+export async function GET() {
+  const auth = await requireUserId();
+  if ('error' in auth) return auth.error;
+  const data = await lobbyPayload(auth.userId, { ready: true });
+  return NextResponse.json(data, { headers: NO_STORE });
 }

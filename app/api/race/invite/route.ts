@@ -4,6 +4,8 @@ import { requireUserId } from '@/lib/race-session';
 import { READY_WINDOW_MS } from '@/lib/race';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function POST(request: Request) {
   const auth = await requireUserId();
@@ -53,6 +55,7 @@ export async function POST(request: Request) {
   const inMatch = await prisma.raceMatch.findFirst({
     where: {
       status: 'playing',
+      startedAt: { gte: new Date(Date.now() - 3 * 60 * 1000) },
       OR: [
         { player1Id: auth.userId },
         { player2Id: auth.userId },
@@ -78,5 +81,7 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ inviteId: invite.id });
+  return NextResponse.json({ inviteId: invite.id }, {
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
