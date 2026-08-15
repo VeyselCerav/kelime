@@ -42,6 +42,9 @@ AppIcons/
 main.ico
 public/app-icon-source.png
 
+# API keys (never commit)
+gemini.txt
+
 # large local word dumps (already imported to DB)
 dataOne.json
 dataTwo.json

@@ -8,7 +8,7 @@ const items = [
   { href: '/flashcards', label: 'Kartlar', icon: 'library_books' },
   { href: '/quiz', label: 'Quiz', icon: 'quiz' },
   { href: '/sinav', label: 'Sınav', icon: 'assignment' },
-  { href: '/stats', label: 'İstat.', icon: 'query_stats' },
+  { href: '/ai', label: 'AI', icon: 'auto_awesome' },
 ];
 
 export default function BottomNav() {

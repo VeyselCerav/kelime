@@ -57,7 +57,7 @@ export default function QuizPage() {
   const [scope, setScope] = useState<ScopeProgressView | null>(null);
   const [practiceTitle, setPracticeTitle] = useState<string | null>(null);
   const { data: session } = useSession();
-  const { selectedModuleId, selectedGroup, selectedGroupIndex } = useModule();
+  const { selectedModuleId, selectedGroup, selectedGroupIndex, unlearnedOnly } = useModule();
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
 
@@ -127,6 +127,7 @@ export default function QuizPage() {
         url.searchParams.set('moduleId', selectedModuleId.toString());
         url.searchParams.set('group', selectedGroupIndex.toString());
         url.searchParams.set('limit', '20');
+        if (unlearnedOnly) url.searchParams.set('unlearned', '1');
 
         const response = await fetch(url);
         if (!response.ok) {
@@ -145,7 +146,7 @@ export default function QuizPage() {
     };
 
     fetchQuestions();
-  }, [selectedModuleId, selectedGroupIndex, refreshScope, mode]);
+  }, [selectedModuleId, selectedGroupIndex, refreshScope, mode, unlearnedOnly]);
 
   return (
     <div className="app-shell py-4">
@@ -165,7 +166,9 @@ export default function QuizPage() {
       </h1>
       {mode !== 'practice' && selectedGroup && (
         <p className="mb-6 text-sm text-on-surface-variant">
-          {selectedGroup.label} · {selectedGroup.start}–{selectedGroup.end}
+          {selectedGroup.label}
+          {unlearnedOnly ? ' · Ezberleyemediklerim' : ''} · {selectedGroup.start}–
+          {selectedGroup.end}
         </p>
       )}
       {mode === 'practice' && (

@@ -1,10 +1,6 @@
 import { prisma } from '@/lib/prisma';
-import {
-  GROUP_SIZE,
-  WordGroupInfo,
-  buildGroups,
-  groupPagination,
-} from '@/lib/subgroups';
+import { GROUP_SIZE, WordGroupInfo, buildGroups } from '@/lib/subgroups';
+import { mixWordsByLetter } from '@/lib/word-order';
 
 export type GroupMode = 'fixed' | 'category';
 
@@ -61,7 +57,7 @@ export function buildModuleGroups(params: {
 }
 
 export function wordIdsForGroup(
-  words: { id: number; category: string | null }[],
+  words: { id: number; english: string; category: string | null }[],
   groupIndex: number,
   groupMode: GroupMode,
   groups: WordGroupInfo[]
@@ -70,12 +66,13 @@ export function wordIdsForGroup(
   if (groupMode === 'category') {
     const info = groups.find((x) => x.index === g);
     if (!info?.category) return [];
-    return words
-      .filter((w) => w.category === info.category)
-      .map((w) => w.id);
+    return mixWordsByLetter(
+      words.filter((w) => w.category === info.category)
+    ).map((w) => w.id);
   }
+  const mixed = mixWordsByLetter(words);
   const start = (g - 1) * GROUP_SIZE;
-  return words.slice(start, start + GROUP_SIZE).map((w) => w.id);
+  return mixed.slice(start, start + GROUP_SIZE).map((w) => w.id);
 }
 
 /** API: bir grubun kelimelerini getir */
@@ -84,10 +81,14 @@ export async function findWordsForGroup(params: {
   groupIndex: number;
   includeModule?: boolean;
 }) {
-  const words = await prisma.word.findMany({
+  const include = params.includeModule
+    ? { module: { select: { id: true, slug: true, name: true } } }
+    : undefined;
+
+  const all = await prisma.word.findMany({
     where: { moduleId: params.moduleId },
     orderBy: { id: 'asc' },
-    select: { id: true, category: true },
+    include,
   });
 
   const mod = await prisma.module.findUnique({
@@ -97,36 +98,25 @@ export async function findWordsForGroup(params: {
   if (!mod) return { words: [] as never[], meta: null };
 
   const meta = buildModuleGroups({
-    words,
+    words: all,
     moduleName: mod.name,
     moduleSlug: mod.slug,
   });
 
   const groupIndex = Math.max(1, params.groupIndex);
-  const include = params.includeModule
-    ? { module: { select: { id: true, slug: true, name: true } } }
-    : undefined;
 
   if (meta.groupMode === 'category') {
     const info = meta.groups.find((g) => g.index === groupIndex);
     if (!info?.category) {
       return { words: [], meta };
     }
-    const result = await prisma.word.findMany({
-      where: { moduleId: params.moduleId, category: info.category },
-      orderBy: { id: 'asc' },
-      include,
-    });
+    const result = mixWordsByLetter(
+      all.filter((w) => w.category === info.category)
+    );
     return { words: result, meta };
   }
 
-  const { skip, take } = groupPagination(groupIndex);
-  const result = await prisma.word.findMany({
-    where: { moduleId: params.moduleId },
-    orderBy: { id: 'asc' },
-    skip,
-    take,
-    include,
-  });
-  return { words: result, meta };
+  const mixed = mixWordsByLetter(all);
+  const start = (groupIndex - 1) * GROUP_SIZE;
+  return { words: mixed.slice(start, start + GROUP_SIZE), meta };
 }

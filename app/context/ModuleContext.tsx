@@ -34,6 +34,8 @@ interface ModuleContextType {
   setSelectedGroupIndex: (index: number) => void;
   groups: WordGroupInfo[];
   selectedGroup: WordGroupInfo | null;
+  unlearnedOnly: boolean;
+  setUnlearnedOnly: (value: boolean) => void;
   isLoading: boolean;
   refreshModules: () => Promise<void>;
 }
@@ -41,11 +43,13 @@ interface ModuleContextType {
 const ModuleContext = createContext<ModuleContextType | undefined>(undefined);
 const STORAGE_MODULE = 'yds-selected-module-id';
 const STORAGE_GROUP = 'yds-selected-group-index';
+const STORAGE_UNLEARNED = 'yds-unlearned-only';
 
 export function ModuleProvider({ children }: { children: React.ReactNode }) {
   const [modules, setModules] = useState<ModuleInfo[]>([]);
   const [selectedModuleId, setSelectedModuleIdState] = useState<number | null>(null);
   const [selectedGroupIndex, setSelectedGroupIndexState] = useState(1);
+  const [unlearnedOnly, setUnlearnedOnlyState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshModules = useCallback(async () => {
@@ -83,6 +87,7 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
     if (!Number.isNaN(stored) && stored >= 1) {
       setSelectedGroupIndexState(stored);
     }
+    setUnlearnedOnlyState(localStorage.getItem(STORAGE_UNLEARNED) === '1');
   }, []);
 
   const selectedModule = modules.find((m) => m.id === selectedModuleId) ?? null;
@@ -123,6 +128,13 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const setUnlearnedOnly = (value: boolean) => {
+    setUnlearnedOnlyState(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_UNLEARNED, value ? '1' : '0');
+    }
+  };
+
   const selectedGroup = groups.find((g) => g.index === selectedGroupIndex) ?? groups[0] ?? null;
 
   return (
@@ -136,6 +148,8 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
         setSelectedGroupIndex,
         groups,
         selectedGroup,
+        unlearnedOnly,
+        setUnlearnedOnly,
         isLoading,
         refreshModules,
       }}

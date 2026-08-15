@@ -26,7 +26,7 @@ export default function FlashCardsClient() {
   const [error, setError] = useState('');
   const [scope, setScope] = useState<ScopeProgressView | null>(null);
   const { data: session } = useSession();
-  const { selectedModuleId, selectedGroup, selectedGroupIndex } = useModule();
+  const { selectedModuleId, selectedGroup, selectedGroupIndex, unlearnedOnly } = useModule();
   const { refreshBadges } = useBadgeContext();
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
@@ -66,8 +66,9 @@ export default function FlashCardsClient() {
       setIsLoading(true);
       setError('');
       try {
+        const unlearnedQs = unlearnedOnly ? '&unlearned=1' : '';
         const response = await fetch(
-          `/api/words?moduleId=${selectedModuleId}&group=${selectedGroupIndex}&study=1`
+          `/api/words?moduleId=${selectedModuleId}&group=${selectedGroupIndex}&study=1${unlearnedQs}`
         );
         if (!response.ok) {
           const errorData = await response.json();
@@ -85,7 +86,7 @@ export default function FlashCardsClient() {
       }
     };
     fetchWords();
-  }, [selectedModuleId, selectedGroupIndex, mode, refreshScope]);
+  }, [selectedModuleId, selectedGroupIndex, mode, refreshScope, unlearnedOnly]);
 
   const goNext = () => {
     setCurrentWordIndex((i) => (i + 1 < words.length ? i + 1 : 0));
@@ -143,7 +144,9 @@ export default function FlashCardsClient() {
           progressLabel={
             mode === 'practice'
               ? 'Tekrar · Ezberleyemediklerim'
-              : selectedGroup?.label
+              : unlearnedOnly
+                ? `${selectedGroup?.label ?? ''} · Ezberleyemediklerim`
+                : selectedGroup?.label
           }
           onActionComplete={goNext}
           onProgressSaved={() => {

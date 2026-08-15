@@ -19,7 +19,7 @@ interface Word {
 
 export default function Home() {
   const { data: session } = useSession();
-  const { selectedModule, selectedModuleId, selectedGroupIndex, selectedGroup } =
+  const { selectedModule, selectedModuleId, selectedGroupIndex, selectedGroup, unlearnedOnly, setUnlearnedOnly } =
     useModule();
   const { badges, learnedCount } = useBadgeContext();
   const [words, setWords] = useState<Word[]>([]);
@@ -104,6 +104,34 @@ export default function Home() {
           Modül Seç
         </h2>
         <ModulePicker />
+        <label className="mt-4 flex cursor-pointer items-center justify-between rounded-2xl border border-outline-variant/40 bg-surface-container-lowest px-4 py-3">
+          <span className="pr-4">
+            <span className="block font-display text-sm font-semibold text-on-surface">
+              Sadece ezberleyemediklerim
+            </span>
+            <span className="mt-0.5 block text-xs text-on-surface-variant">
+              Kart ve quiz’de seçili gruptaki ezberleyemediğin kelimeler
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="sr-only"
+            checked={unlearnedOnly}
+            onChange={(e) => setUnlearnedOnly(e.target.checked)}
+          />
+          <span
+            className={`relative h-7 w-12 shrink-0 rounded-full transition ${
+              unlearnedOnly ? 'bg-primary' : 'bg-outline-variant/60'
+            }`}
+            aria-hidden
+          >
+            <span
+              className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition ${
+                unlearnedOnly ? 'left-5' : 'left-0.5'
+              }`}
+            />
+          </span>
+        </label>
       </section>
 
       {scope && (

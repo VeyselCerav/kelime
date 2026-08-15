@@ -33,7 +33,7 @@ export function computeScopeProgress(params: {
   moduleName: string;
   moduleSlug: string;
   groupIndex: number;
-  words: { id: number; category: string | null }[];
+  words: { id: number; english: string; category: string | null }[];
   learnedIdSet: Set<number>;
 }): ScopeProgress {
   const meta = buildModuleGroups({
@@ -75,7 +75,7 @@ export function findCompletedGroups(params: {
     id: number;
     slug: string;
     name: string;
-    words: { id: number; category: string | null }[];
+    words: { id: number; english: string; category: string | null }[];
   }[];
   learnedIdSet: Set<number>;
 }): CompletedGroup[] {

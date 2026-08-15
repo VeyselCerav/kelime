@@ -118,7 +118,7 @@ export default function ExamPage() {
       <div>
         <h1 className="font-display text-2xl font-bold text-on-surface">Sınav</h1>
         <p className="mt-1 text-sm text-on-surface-variant">
-          Ezberlediğin kelimelerden sınava gir; sonuçlar İstatistik’te görünür.
+          Ezberlediğin kelimelerden sınava gir; sonuçlar profildeki İstatistikler’de görünür.
         </p>
       </div>
 

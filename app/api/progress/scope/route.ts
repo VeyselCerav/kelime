@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       prisma.word.findMany({
         where: { moduleId },
         orderBy: { id: 'asc' },
-        select: { id: true, category: true },
+        select: { id: true, english: true, category: true },
       }),
       prisma.learnedWord.findMany({
         where: {

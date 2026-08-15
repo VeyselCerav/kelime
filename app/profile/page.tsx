@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import {
   Chart as ChartJS,
@@ -114,9 +115,16 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      <p className="mb-6 text-sm text-on-surface-variant">
+      <p className="mb-4 text-sm text-on-surface-variant">
         {session.user?.username || session.user?.email}
       </p>
+      <Link
+        href="/stats"
+        className="btn-tactile mb-8 inline-flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary-container/20 px-4 py-2.5 text-sm font-bold text-primary"
+      >
+        <span className="material-symbols-outlined text-[20px]">query_stats</span>
+        İstatistikler
+      </Link>
 
       {/* İlerleme Kartları */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">

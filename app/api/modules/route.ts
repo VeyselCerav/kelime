@@ -8,7 +8,7 @@ export async function GET() {
       orderBy: { sortOrder: 'asc' },
       include: {
         words: {
-          select: { id: true, category: true },
+          select: { id: true, english: true, category: true },
           orderBy: { id: 'asc' },
         },
       },

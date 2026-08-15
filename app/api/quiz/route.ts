@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getUserFromToken } from '@/lib/auth';
 import { findWordsForGroup } from '@/lib/module-groups';
 import { weightedShuffle } from '@/lib/study-queue';
+import { filterUnlearnedOrFallback } from '@/lib/unlearned-filter';
 import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function GET(request: Request) {
@@ -14,6 +15,7 @@ export async function GET(request: Request) {
     const moduleSlug = searchParams.get('module');
     const groupParam = searchParams.get('group');
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
+    const unlearnedOnly = searchParams.get('unlearned') === '1';
 
     let moduleId: number | undefined;
     if (moduleIdParam) {
@@ -42,9 +44,15 @@ export async function GET(request: Request) {
     }
 
     const session = await getServerSession(authOptions);
+    const userId = session?.user?.id ? parseInt(session.user.id, 10) : null;
+
+    if (unlearnedOnly) {
+      const filtered = await filterUnlearnedOrFallback(words, userId, true, 4);
+      words = filtered.words;
+    }
+
     let learnedSet = new Set<number>();
-    if (session?.user?.id && words.length) {
-      const userId = parseInt(session.user.id, 10);
+    if (userId && words.length) {
       const learned = await prisma.learnedWord.findMany({
         where: {
           userId,
