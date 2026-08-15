@@ -2,8 +2,8 @@ import { prisma } from '@/lib/prisma';
 import { findWordsForGroup } from '@/lib/module-groups';
 
 export const RACE_QUESTION_COUNT = 20;
-export const READY_WINDOW_MS = 8000;
-export const INVITE_TTL_MS = 45000;
+export const READY_WINDOW_MS = 20000;
+export const INVITE_TTL_MS = 60000;
 export const WIN_BONUS = 25;
 export const POINTS_PER_CORRECT = 2;
 
@@ -47,13 +47,11 @@ export async function buildRaceQuestions(
   }
 
   const selected = shuffle(words).slice(0, RACE_QUESTION_COUNT);
-  const pool =
-    words.length >= 8
-      ? words
-      : await prisma.word.findMany({
-          where: { moduleId },
-          take: 80,
-        });
+  const distractorPool = await prisma.word.findMany({
+    where: { moduleId },
+    take: 120,
+  });
+  const pool = distractorPool.length >= 8 ? distractorPool : words;
 
   return selected.map((word) => {
     const wrong = shuffle(

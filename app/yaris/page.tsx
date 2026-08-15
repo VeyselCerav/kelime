@@ -54,6 +54,8 @@ export default function RacePage() {
   const [match, setMatch] = useState<MatchPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const submittedRef = useRef(false);
+  const questionsRef = useRef<QuizQuestion[] | null>(null);
+  const matchIdRef = useRef<number | null>(null);
 
   const heartbeat = useCallback(async () => {
     if (!selectedModuleId) return;
@@ -75,30 +77,23 @@ export default function RacePage() {
     setReadyUsers(data.readyUsers || []);
     setIncoming(data.incomingInvites || []);
     setOutgoing(data.outgoingInvites || []);
-    if (data.activeMatchId && !matchId) {
+    if (data.activeMatchId && !matchIdRef.current) {
+      matchIdRef.current = data.activeMatchId;
       setMatchId(data.activeMatchId);
     }
-  }, [matchId]);
+  }, []);
 
   useEffect(() => {
     if (status !== 'authenticated') return;
     void heartbeat();
     const t = window.setInterval(() => void heartbeat(), 2000);
-    return () => {
-      window.clearInterval(t);
-      void fetch('/api/race/presence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ready: false }),
-        keepalive: true,
-      });
-    };
+    return () => window.clearInterval(t);
   }, [status, heartbeat]);
 
   useEffect(() => {
     if (status !== 'authenticated' || matchId) return;
     void refreshLobby();
-    const t = window.setInterval(() => void refreshLobby(), 2000);
+    const t = window.setInterval(() => void refreshLobby(), 1000);
     return () => window.clearInterval(t);
   }, [status, matchId, refreshLobby]);
 
@@ -109,7 +104,13 @@ export default function RacePage() {
       const res = await fetch(`/api/race/match/${matchId}`);
       if (!res.ok || stop) return;
       const data = (await res.json()) as MatchPayload;
-      setMatch(data);
+      setMatch((prev) => {
+        if (prev && prev.id === data.id && prev.questions.length) {
+          return { ...data, questions: prev.questions };
+        }
+        questionsRef.current = data.questions;
+        return data;
+      });
     };
     void tick();
     const t = window.setInterval(() => void tick(), 1500);
@@ -155,6 +156,8 @@ export default function RacePage() {
       if (!res.ok) throw new Error(data.error || 'İşlem başarısız');
       if (data.matchId) {
         submittedRef.current = false;
+        questionsRef.current = null;
+        matchIdRef.current = data.matchId;
         setMatchId(data.matchId);
       } else {
         void refreshLobby();
@@ -177,6 +180,8 @@ export default function RacePage() {
   };
 
   const backToLobby = () => {
+    matchIdRef.current = null;
+    questionsRef.current = null;
     setMatchId(null);
     setMatch(null);
     submittedRef.current = false;
@@ -238,37 +243,40 @@ export default function RacePage() {
             </span>
           </label>
 
-          {incoming.map((inv) => (
-            <div
-              key={inv.id}
-              className="rounded-card border border-secondary/30 bg-secondary-container/30 p-4"
-            >
-              <p className="font-semibold text-on-surface">
-                {inv.from.username} seni yarışa davet etti
-              </p>
-              <p className="mt-1 text-xs text-on-surface-variant">
-                Kabul edersen seçili gruptan 20 soru başlar.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void respond(inv.id, 'accept')}
-                  className="btn-tactile flex-1 rounded-full bg-primary py-2.5 text-sm font-bold text-on-primary"
-                >
-                  Kabul
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void respond(inv.id, 'decline')}
-                  className="btn-tactile flex-1 rounded-full border border-outline-variant/50 py-2.5 text-sm font-bold"
-                >
-                  Red
-                </button>
+          {incoming[0] && (
+            <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/45 p-4 sm:items-center">
+              <div className="w-full max-w-md rounded-card border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-soft">
+                <p className="text-center text-[11px] font-bold uppercase tracking-wider text-outline">
+                  Yarış daveti
+                </p>
+                <h2 className="mt-2 text-center font-display text-2xl font-bold text-on-surface">
+                  {incoming[0].from.username}
+                </h2>
+                <p className="mt-2 text-center text-sm text-on-surface-variant">
+                  Seni 20 soruluk yarışa davet etti. Kabul edersen aynı sorular
+                  ikinize de gelir.
+                </p>
+                <div className="mt-5 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void respond(incoming[0].id, 'accept')}
+                    className="btn-tactile flex-1 rounded-full bg-primary py-3 text-sm font-bold text-on-primary"
+                  >
+                    Kabul et
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void respond(incoming[0].id, 'decline')}
+                    className="btn-tactile flex-1 rounded-full border border-outline-variant/50 py-3 text-sm font-bold"
+                  >
+                    Reddet
+                  </button>
+                </div>
               </div>
             </div>
-          ))}
+          )}
 
           {outgoing.length > 0 && (
             <div className="rounded-card border border-outline-variant/30 bg-surface-container-lowest p-4">
@@ -340,6 +348,7 @@ export default function RacePage() {
             Rakip: {match.opponent.username}
           </p>
           <Quiz
+            key={match.id}
             questions={match.questions}
             isAuthenticated
             examMode

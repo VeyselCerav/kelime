@@ -18,6 +18,14 @@ export async function GET() {
     data: { status: 'expired' },
   });
 
+  await prisma.raceMatch.updateMany({
+    where: {
+      status: 'playing',
+      startedAt: { lt: new Date(now - 20 * 60 * 1000) },
+    },
+    data: { status: 'cancelled' },
+  });
+
   const [me, readyRows, incoming, outgoing, active] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -46,6 +54,7 @@ export async function GET() {
     prisma.raceMatch.findFirst({
       where: {
         status: 'playing',
+        startedAt: { gte: new Date(now - 20 * 60 * 1000) },
         OR: [{ player1Id: userId }, { player2Id: userId }],
       },
       orderBy: { createdAt: 'desc' },
@@ -54,7 +63,10 @@ export async function GET() {
 
   const busyIds = new Set<number>();
   const playing = await prisma.raceMatch.findMany({
-    where: { status: 'playing' },
+    where: {
+      status: 'playing',
+      startedAt: { gte: new Date(now - 20 * 60 * 1000) },
+    },
     select: { player1Id: true, player2Id: true },
   });
   for (const m of playing) {

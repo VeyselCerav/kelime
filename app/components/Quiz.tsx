@@ -66,7 +66,9 @@ export default function Quiz({
       wrongAnswers: 0,
       score: 0,
     });
-  }, [questions]);
+    // Yalnızca soru sayısı değişince sıfırla; aynı yarışta poll referansı değiştirmez
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questions.length, questions[0]?.wordId]);
 
   const handleAnswerSelect = async (answer: string) => {
     if (isAnswered) return;
