@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import { generateMemoryParagraph } from '@/lib/gemini';
+import { generateMemoryParagraph, geminiUserMessage } from '@/lib/gemini';
+
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 const MAX_WORDS = 10;
 const MIN_WORDS = 3;
@@ -67,13 +71,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
-    console.error('AI paragraf hatası:', error);
+    console.error('AI paragraf hatası:', message);
     const missingKey = message.includes('GEMINI_API_KEY');
     return NextResponse.json(
       {
         error: missingKey
           ? 'AI servisi yapılandırılmamış. GEMINI_API_KEY ekleyin.'
-          : 'Paragraf üretilemedi. Biraz sonra tekrar dene.',
+          : geminiUserMessage(message),
       },
       { status: missingKey ? 503 : 500 }
     );
