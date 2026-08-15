@@ -7,7 +7,7 @@ const items = [
   { href: '/', label: 'Ana', icon: 'home' },
   { href: '/flashcards', label: 'Kartlar', icon: 'library_books' },
   { href: '/quiz', label: 'Quiz', icon: 'quiz' },
-  { href: '/sinav', label: 'Sınav', icon: 'assignment' },
+  { href: '/yaris', label: 'Yarış', icon: 'swords' },
   { href: '/ai', label: 'AI', icon: 'auto_awesome' },
 ];
 

@@ -24,6 +24,7 @@ interface QuizProps {
   examMode?: boolean;
   completedTitle?: string;
   onComplete?: (results: QuizResultSummary) => void;
+  hideCompleteScreen?: boolean;
 }
 
 export default function Quiz({
@@ -32,6 +33,7 @@ export default function Quiz({
   examMode = false,
   completedTitle = 'Quiz Tamamlandı',
   onComplete,
+  hideCompleteScreen = false,
 }: QuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -135,6 +137,13 @@ export default function Quiz({
   };
 
   if (quizCompleted) {
+    if (hideCompleteScreen) {
+      return (
+        <div className="flex justify-center py-16">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      );
+    }
     return (
       <div className="mx-auto max-w-md space-y-6 rounded-card bg-cream p-6 text-center shadow-organic">
         <span className="material-symbols-outlined text-5xl text-primary">
@@ -189,13 +198,13 @@ export default function Quiz({
       </div>
 
       <p className="mb-4 text-center text-sm italic text-secondary">
-        {examMode ? 'Sınav modu — dikkatli ol!' : 'Harika gidiyorsun, devam et!'}
+        {examMode ? 'Yarış — hızlı ve doğru ol!' : 'Harika gidiyorsun, devam et!'}
       </p>
 
       <section className="paper-stack relative mb-6 rounded-[32px] border border-outline-variant bg-white p-6 shadow-sm">
         <div className="mb-3 flex items-start justify-between">
           <span className="rounded-full bg-tertiary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-tertiary">
-            {examMode ? 'Sınav' : 'Anlam'}
+            {examMode ? 'Yarış' : 'Anlam'}
           </span>
           <span className="material-symbols-outlined text-outline-variant">
             {examMode ? 'assignment' : 'auto_stories'}

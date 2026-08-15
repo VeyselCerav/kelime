@@ -10,12 +10,15 @@ import { STREAK_BADGES, WORD_BADGES } from '@/lib/badges';
 
 const DAY_LABELS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
-interface ExamResultRow {
+interface RaceRecent {
   id: number;
-  questionCount: number;
+  opponent: string;
   correctCount: number;
-  wrongCount: number;
-  score: number;
+  questionCount: number;
+  durationMs: number;
+  won: boolean;
+  draw: boolean;
+  points: number;
   createdAt: string;
 }
 
@@ -24,7 +27,9 @@ export default function StatsPage() {
   const { modules, selectedModule } = useModule();
   const { badges, learnedCount, streak } = useBadgeContext();
   const [weeklyData, setWeeklyData] = useState<number[]>(Array(7).fill(0));
-  const [examResults, setExamResults] = useState<ExamResultRow[]>([]);
+  const [raceWins, setRaceWins] = useState(0);
+  const [racePoints, setRacePoints] = useState(0);
+  const [raceRecent, setRaceRecent] = useState<RaceRecent[]>([]);
 
   useEffect(() => {
     if (!session) return;
@@ -35,10 +40,12 @@ export default function StatsPage() {
       })
       .catch(console.error);
 
-    fetch('/api/exam/results')
+    fetch('/api/race/stats')
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setExamResults(data);
+        if (typeof data.wins === 'number') setRaceWins(data.wins);
+        if (typeof data.points === 'number') setRacePoints(data.points);
+        if (Array.isArray(data.recent)) setRaceRecent(data.recent);
       })
       .catch(console.error);
   }, [session]);
@@ -120,6 +127,28 @@ export default function StatsPage() {
             </div>
           </section>
 
+          <section className="grid grid-cols-2 gap-3">
+            <div className="rounded-3xl bg-cream p-5 shadow-organic">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-outline">
+                Kazanılan yarış
+              </p>
+              <p className="mt-1 font-display text-3xl font-bold text-primary">
+                {raceWins}
+              </p>
+            </div>
+            <div className="rounded-3xl bg-cream p-5 shadow-organic">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-outline">
+                Yarış puanı
+              </p>
+              <p className="mt-1 font-display text-3xl font-bold text-secondary">
+                {racePoints}
+              </p>
+              <p className="mt-1 text-[11px] text-on-surface-variant">
+                Galibiyet +25 · doğru +2
+              </p>
+            </div>
+          </section>
+
           <section className="space-y-4 rounded-3xl bg-cream p-6 shadow-organic">
             <h2 className="font-display text-xl font-semibold text-on-surface">
               Haftalık İlerleme
@@ -180,48 +209,47 @@ export default function StatsPage() {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-xl font-semibold text-on-surface">
-                Son Sınavlar
+                Son yarışlar
               </h2>
-              <Link href="/sinav" className="text-xs font-bold text-primary hover:underline">
-                Sınava gir
+              <Link href="/yaris" className="text-xs font-bold text-primary hover:underline">
+                Yarışa gir
               </Link>
             </div>
-            {examResults.length === 0 ? (
+            {raceRecent.length === 0 ? (
               <p className="rounded-card bg-cream p-4 text-sm text-on-surface-variant shadow-organic">
-                Henüz sınav sonucun yok. Ezberlediğin kelimelerle sınava gir.
+                Henüz yarışın yok. Hazır bir rakibe davet gönder.
               </p>
             ) : (
               <div className="space-y-2">
-                {examResults.map((exam) => (
+                {raceRecent.map((row) => (
                   <div
-                    key={exam.id}
+                    key={row.id}
                     className="flex items-center justify-between rounded-2xl border border-outline-variant/30 bg-cream px-4 py-3 shadow-organic"
                   >
                     <div>
                       <p className="font-semibold text-on-surface">
-                        {exam.correctCount}/{exam.questionCount} doğru
+                        vs {row.opponent} · {row.correctCount}/{row.questionCount}
                       </p>
                       <p className="text-xs text-on-surface-variant">
-                        {new Date(exam.createdAt).toLocaleString('tr-TR', {
+                        {new Date(row.createdAt).toLocaleString('tr-TR', {
                           day: 'numeric',
                           month: 'short',
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
-                        {' · '}
-                        {exam.wrongCount} yanlış
+                        {' · '}+{row.points} puan
                       </p>
                     </div>
                     <div
                       className={`rounded-full px-3 py-1 text-sm font-bold ${
-                        exam.score >= 70
-                          ? 'bg-primary-container/30 text-primary'
-                          : exam.score >= 40
-                            ? 'bg-secondary-container/40 text-on-secondary-container'
+                        row.draw
+                          ? 'bg-surface-container text-on-surface-variant'
+                          : row.won
+                            ? 'bg-primary-container/30 text-primary'
                             : 'bg-error/10 text-error'
                       }`}
                     >
-                      {Math.round(exam.score)}%
+                      {row.draw ? 'Berabere' : row.won ? 'Galibiyet' : 'Mağlubiyet'}
                     </div>
                   </div>
                 ))}

@@ -22,6 +22,10 @@ model User {
   unlearnedWords    UnlearnedWord[]
   dailyGoals        DailyGoal[]
   examResults       ExamResult[]
+  racePresence      RacePresence?
+  raceInvitesSent   RaceInvite[]  @relation("RaceInvitesSent")
+  raceInvitesRecv   RaceInvite[]  @relation("RaceInvitesReceived")
+  raceResults       RaceResult[]
 }
 
 model Module {
@@ -93,5 +97,67 @@ model ExamResult {
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, createdAt])
+}
+
+model RacePresence {
+  userId     Int      @id
+  ready      Boolean  @default(true)
+  lastSeen   DateTime @default(now())
+  moduleId   Int?
+  groupIndex Int      @default(1)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RaceInvite {
+  id         Int      @id @default(autoincrement())
+  fromUserId Int
+  toUserId   Int
+  moduleId   Int
+  groupIndex Int
+  status     String   @default("pending")
+  matchId    Int?
+  createdAt  DateTime @default(now())
+  fromUser   User     @relation("RaceInvitesSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser     User     @relation("RaceInvitesReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([toUserId, status])
+  @@index([fromUserId, status])
+  @@index([createdAt])
+}
+
+model RaceMatch {
+  id         Int          @id @default(autoincrement())
+  player1Id  Int
+  player2Id  Int
+  moduleId   Int
+  groupIndex Int
+  questions  Json
+  status     String       @default("playing")
+  winnerId   Int?
+  startedAt  DateTime     @default(now())
+  createdAt  DateTime     @default(now())
+  results    RaceResult[]
+
+  @@index([player1Id, status])
+  @@index([player2Id, status])
+}
+
+model RaceResult {
+  id            Int       @id @default(autoincrement())
+  matchId       Int
+  userId        Int
+  opponentId    Int
+  correctCount  Int
+  questionCount Int
+  durationMs    Int
+  won           Boolean   @default(false)
+  draw          Boolean   @default(false)
+  points        Int       @default(0)
+  createdAt     DateTime  @default(now())
+  match         RaceMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, userId])
   @@index([userId, createdAt])
 }
