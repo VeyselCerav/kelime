@@ -6,6 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'YDS Monster',
     description: 'Mobil kelime kartları, quiz ve sınav ile YDS hazırlığı',
     start_url: '/',
+    id: '/',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait-primary',
@@ -23,6 +24,12 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         src: '/icon-512.png',
         sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/apple-touch-icon.png',
+        sizes: '180x180',
         type: 'image/png',
         purpose: 'any',
       },

@@ -132,7 +132,7 @@ export const authOptions = {
                 email: user.email,
                 username: username,
                 password: hashedPassword,
-                emailVerified: new Date(), // Google ile giriş yapanlar için otomatik doğrula
+                emailVerified: true,
                 verificationToken: null,
                 tokenExpiry: null,
               }

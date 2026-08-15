@@ -1,5 +1,5 @@
 /* YDS Monster — minimal SW (kurulum / offline iskeleti) */
-const CACHE = 'yds-monster-v1';
+const CACHE = 'yds-monster-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

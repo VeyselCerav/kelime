@@ -3,7 +3,14 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 /** Giriş gerektirmeyen yollar */
-const publicExact = new Set(['/login', '/register']);
+const publicExact = new Set([
+  '/login',
+  '/register',
+  '/sw.js',
+  '/manifest.webmanifest',
+  '/manifest.json',
+  '/robots.txt',
+]);
 const publicPrefixes = ['/auth', '/api/auth'];
 
 const adminPrefixes = [
