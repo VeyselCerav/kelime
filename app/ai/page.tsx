@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useModule } from '../context/ModuleContext';
@@ -30,6 +30,8 @@ export default function AiStudioPage() {
   const { data: session, status } = useSession();
   const { selectedModuleId } = useModule();
   const { refreshBadges } = useBadgeContext();
+  const selectedModuleIdRef = useRef(selectedModuleId);
+  selectedModuleIdRef.current = selectedModuleId;
 
   const [groups, setGroups] = useState<ModuleGroup[]>([]);
   const [moduleId, setModuleId] = useState<number | null>(null);
@@ -45,34 +47,46 @@ export default function AiStudioPage() {
   const [learnedIds, setLearnedIds] = useState<Set<number>>(new Set());
   const [marking, setMarking] = useState(false);
 
-  const loadUnlearned = async () => {
-    setLoadingList(true);
+  const loadUnlearned = useCallback(async (silent = false) => {
+    if (!silent) setLoadingList(true);
     setListError('');
     try {
-      const res = await fetch('/api/unlearned-words', { credentials: 'include' });
+      const res = await fetch(`/api/unlearned-words?t=${Date.now()}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Liste alınamadı');
       const list: ModuleGroup[] = Array.isArray(data.modules) ? data.modules : [];
       setGroups(list);
       setModuleId((prev) => {
         if (prev && list.some((g) => g.moduleId === prev)) return prev;
-        if (selectedModuleId && list.some((g) => g.moduleId === selectedModuleId)) {
-          return selectedModuleId;
+        const preferred = selectedModuleIdRef.current;
+        if (preferred && list.some((g) => g.moduleId === preferred)) {
+          return preferred;
         }
         return list[0]?.moduleId ?? null;
       });
     } catch (e) {
       setListError(e instanceof Error ? e.message : 'Hata');
     } finally {
-      setLoadingList(false);
+      if (!silent) setLoadingList(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (status !== 'authenticated') return;
     void loadUnlearned();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void loadUnlearned(true);
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [status, loadUnlearned]);
 
   useEffect(() => {
     if (moduleId && groups.length && !groups.some((g) => g.moduleId === moduleId)) {
@@ -89,12 +103,18 @@ export default function AiStudioPage() {
       setSelectedIds([]);
       return;
     }
-    setSelectedIds(group.words.slice(0, MAX).map((w) => w.id));
+    const valid = new Set(group.words.map((w) => w.id));
+    setSelectedIds((prev) => {
+      const kept = prev.filter((id) => valid.has(id));
+      if (kept.length > 0) return kept.slice(0, MAX);
+      return group.words.slice(0, MAX).map((w) => w.id);
+    });
+  }, [moduleId, groups]);
+
+  useEffect(() => {
     setResult(null);
     setActive(null);
     setShowTr(false);
-    // yalnızca modül değişince varsayılan seçimi yenile
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moduleId]);
 
   const selectedWords = useMemo(
@@ -161,6 +181,7 @@ export default function AiStudioPage() {
           .filter((g) => g.words.length > 0)
       );
       void refreshBadges();
+      void loadUnlearned(true);
       setActive(null);
     } catch (e) {
       setGenError(e instanceof Error ? e.message : 'Kaydedilemedi');

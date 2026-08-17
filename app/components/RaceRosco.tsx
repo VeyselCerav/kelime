@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
-const RACE_TIMER_MS = 90_000;
+const RACE_TIMER_MS = 120_000;
 
 export type RaceCharacter = 'male' | 'female';
 

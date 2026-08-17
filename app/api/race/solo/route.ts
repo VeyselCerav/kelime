@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUserId } from '@/lib/race-session';
-import { buildRaceQuestions } from '@/lib/race';
+import { buildRaceQuestions, recentRaceWordIds } from '@/lib/race';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -18,7 +18,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const questions = await buildRaceQuestions(moduleId, groupIndex);
+    const excludeWordIds = await recentRaceWordIds({
+      moduleId,
+      userIds: [auth.userId],
+    });
+    const questions = await buildRaceQuestions(moduleId, groupIndex, {
+      excludeWordIds,
+    });
     return NextResponse.json(
       { questions },
       { headers: { 'Cache-Control': 'no-store' } }

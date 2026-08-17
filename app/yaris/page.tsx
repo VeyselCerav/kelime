@@ -96,7 +96,7 @@ export default function RacePage() {
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ready: mode === 'versus' && ready && !inGame,
+        ready: (mode === 'practice' || mode === 'versus') && ready && !inGame,
         moduleId: selectedModuleId,
         groupIndex: selectedGroupIndex,
       }),
@@ -108,7 +108,7 @@ export default function RacePage() {
     setOutgoing(data.outgoingInvites || []);
     if (data.activeMatchId && !matchIdRef.current && !solo) {
       matchIdRef.current = data.activeMatchId;
-      setMode('versus');
+      setMode((prev) => prev ?? 'versus');
       setMatchLocked(false);
       setMatchId(data.activeMatchId);
     }
@@ -183,7 +183,7 @@ export default function RacePage() {
         questionsRef.current = null;
         matchIdRef.current = data.matchId;
         setSolo(null);
-        setMode('versus');
+        setMode((prev) => prev ?? 'versus');
         setMatchLocked(false);
         setMatchId(data.matchId);
       } else {
@@ -291,6 +291,97 @@ export default function RacePage() {
     </section>
   );
 
+  const lobbyPlayers = (
+    <>
+      <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-outline-variant/40 bg-surface-container-lowest px-4 py-3">
+        <span>
+          <span className="block font-display text-sm font-semibold">Hazırım</span>
+          <span className="text-xs text-on-surface-variant">
+            Açıkken başkaları seni davet edebilir
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          className="sr-only"
+          checked={ready}
+          onChange={(e) => setReady(e.target.checked)}
+        />
+        <span
+          className={`relative h-7 w-12 shrink-0 rounded-full ${
+            ready ? 'bg-primary' : 'bg-outline-variant/60'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow ${
+              ready ? 'left-5' : 'left-0.5'
+            }`}
+          />
+        </span>
+      </label>
+
+      {outgoing.length > 0 && (
+        <div className="rounded-card border border-outline-variant/30 bg-surface-container-lowest p-4">
+          {outgoing.map((inv) => (
+            <div key={inv.id} className="flex items-center justify-between gap-2">
+              <p className="text-sm">
+                <span className="font-semibold">{inv.to.username}</span> yanıtı
+                bekleniyor…
+              </p>
+              <button
+                type="button"
+                onClick={() => void respond(inv.id, 'cancel')}
+                className="text-xs font-bold text-error"
+              >
+                İptal
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <section>
+        <h2 className="mb-2 font-display text-lg font-semibold">Hazır yarışmacılar</h2>
+        {readyUsers.length === 0 ? (
+          <div className="paper-texture rounded-card border border-outline-variant/40 p-6 text-center">
+            <span className="material-symbols-outlined text-3xl text-primary">
+              hourglass_top
+            </span>
+            <p className="mt-2 font-display text-lg font-semibold">
+              Şu an rakip yok
+            </p>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              Biri gelince davet at; ikiniz de 120 saniye oynarsınız.
+            </p>
+            {selectedGroup && (
+              <p className="mt-2 text-xs text-outline">
+                Oyun grubu: {selectedGroup.label}
+              </p>
+            )}
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {readyUsers.map((u) => (
+              <li
+                key={u.id}
+                className="flex items-center justify-between rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-4 py-3"
+              >
+                <span className="font-semibold text-primary">{u.username}</span>
+                <button
+                  type="button"
+                  disabled={busy || !ready}
+                  onClick={() => void invite(u.id)}
+                  className="btn-tactile rounded-full bg-secondary-container px-4 py-2 text-sm font-bold text-on-secondary-container disabled:opacity-40"
+                >
+                  Davet et
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
+  );
+
   const inviteOverlay = incoming[0] && !inGame && !solo && (
     <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/45 p-4 sm:items-center">
       <div className="w-full max-w-md rounded-card border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-soft">
@@ -301,8 +392,8 @@ export default function RacePage() {
           {incoming[0].from.username}
         </h2>
         <p className="mt-2 text-center text-sm text-on-surface-variant">
-          Seni harf çemberi yarışına davet etti. Kabul edersen aynı 20 kelime
-          ikinize de gelir.
+          Seni harf çemberine davet etti. Kabul edersen ikiniz de aynı 20
+          kelimeyle 120 saniye oynarsınız.
         </p>
         <div className="mt-5 flex gap-2">
           <button
@@ -359,9 +450,9 @@ export default function RacePage() {
           </h1>
           <p className="mt-1 text-sm text-on-surface-variant">
             {mode === 'practice'
-              ? 'Tek başına harf çemberi. 90 saniye, pas serbest. Puan yazılmaz.'
+              ? 'Tek oyna veya birini davet et. İkiniz de 120 saniye, aynı çember.'
               : mode === 'versus'
-                ? 'Çevrimiçi rakip davet et. Aynı 20 kelime, en çok doğru kazanır.'
+                ? 'Çevrimiçi rakip davet et. Her maçta modülden yeni 20 kelime gelir.'
                 : 'Antrenman mı, yoksa rakiple yarış mı?'}
           </p>
         </div>
@@ -388,8 +479,8 @@ export default function RacePage() {
               Antrenman
             </span>
             <span className="mt-1 block text-sm text-on-surface-variant">
-              Tek başına harf çemberi. Tanımı gör, İngilizce kelimeyi yaz. 90
-              saniye, pas serbest.
+              Tek oyna veya ikinci kişiyi davet et. Karşılıklı 120 saniye, aynı
+              harf çemberi.
             </span>
           </button>
           <button
@@ -407,8 +498,8 @@ export default function RacePage() {
               Rakiple yarış
             </span>
             <span className="mt-1 block text-sm text-on-surface-variant">
-              Hazır oyuncuları gör, davet at. Aynı 20 kelime; eşitlikte daha
-              hızlı olan önde.
+              Hazır oyuncuları gör, davet at. Her maçta yeni 20 kelime; eşitlikte
+              daha hızlı olan önde.
             </span>
           </button>
         </div>
@@ -431,8 +522,9 @@ export default function RacePage() {
             onClick={() => void startSolo()}
             className="btn-tactile w-full rounded-full bg-primary py-3 font-bold text-on-primary disabled:opacity-40"
           >
-            Antrenmana başla
+            Tek başına başla
           </button>
+          {lobbyPlayers}
         </>
       )}
 
@@ -447,94 +539,7 @@ export default function RacePage() {
           </button>
           <StudyScopePicker />
           {characterPicker}
-
-          <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-outline-variant/40 bg-surface-container-lowest px-4 py-3">
-            <span>
-              <span className="block font-display text-sm font-semibold">Hazırım</span>
-              <span className="text-xs text-on-surface-variant">
-                Kapalıysa başkaları seni göremez
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={ready}
-              onChange={(e) => setReady(e.target.checked)}
-            />
-            <span
-              className={`relative h-7 w-12 shrink-0 rounded-full ${
-                ready ? 'bg-primary' : 'bg-outline-variant/60'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow ${
-                  ready ? 'left-5' : 'left-0.5'
-                }`}
-              />
-            </span>
-          </label>
-
-          {outgoing.length > 0 && (
-            <div className="rounded-card border border-outline-variant/30 bg-surface-container-lowest p-4">
-              {outgoing.map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between gap-2">
-                  <p className="text-sm">
-                    <span className="font-semibold">{inv.to.username}</span> yanıtı
-                    bekleniyor…
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void respond(inv.id, 'cancel')}
-                    className="text-xs font-bold text-error"
-                  >
-                    İptal
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <section>
-            <h2 className="mb-2 font-display text-lg font-semibold">Hazır yarışmacılar</h2>
-            {readyUsers.length === 0 ? (
-              <div className="paper-texture rounded-card border border-outline-variant/40 p-8 text-center">
-                <span className="material-symbols-outlined text-4xl text-primary">
-                  hourglass_top
-                </span>
-                <p className="mt-3 font-display text-xl font-semibold">
-                  Şu an rakip yok
-                </p>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Bu ekranda kal, biri gelince davet atabilirsin. Antrenman için
-                  Mod seç’e dön.
-                </p>
-                {selectedGroup && (
-                  <p className="mt-3 text-xs text-outline">
-                    Oyun grubu: {selectedGroup.label}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {readyUsers.map((u) => (
-                  <li
-                    key={u.id}
-                    className="flex items-center justify-between rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-4 py-3"
-                  >
-                    <span className="font-semibold text-primary">{u.username}</span>
-                    <button
-                      type="button"
-                      disabled={busy || !ready}
-                      onClick={() => void invite(u.id)}
-                      className="btn-tactile rounded-full bg-secondary-container px-4 py-2 text-sm font-bold text-on-secondary-container disabled:opacity-40"
-                    >
-                      Davet et
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          {lobbyPlayers}
         </>
       )}
 
@@ -543,7 +548,7 @@ export default function RacePage() {
           key={`match-${match.id}`}
           questions={match.questions}
           character={character}
-          subtitle={`Rakip: ${match.opponent.username}`}
+          subtitle={`Rakip: ${match.opponent.username} · 120 sn`}
           onComplete={(r) => void onMatchComplete(r)}
         />
       )}
@@ -553,7 +558,7 @@ export default function RacePage() {
           key="solo"
           questions={solo.questions}
           character={character}
-          subtitle="Antrenman · 90 saniye"
+          subtitle="Antrenman · 120 saniye"
           onComplete={(result) =>
             setSolo((prev) => (prev ? { ...prev, result } : prev))
           }

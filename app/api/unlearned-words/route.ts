@@ -3,13 +3,23 @@ import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '../auth/[...nextauth]/route';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const NO_STORE = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+};
+
 /** Ezberlenemeyen kelimeler — modül bilgisiyle */
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Oturum açmanız gerekiyor' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Oturum açmanız gerekiyor' },
+        { status: 401, headers: NO_STORE }
+      );
     }
 
     const userId =
@@ -19,7 +29,7 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
+      return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404, headers: NO_STORE });
     }
 
     const unlearnedWords = await prisma.unlearnedWord.findMany({
@@ -90,12 +100,12 @@ export async function GET() {
       words: formattedWords,
       modules,
       total: formattedWords.length,
-    });
+    }, { headers: NO_STORE });
   } catch (error) {
     console.error('Ezberlenemeyen kelimeler getirme hatası:', error);
     return NextResponse.json(
       { error: 'Kelimeler getirilirken bir hata oluştu.' },
-      { status: 500 }
+      { status: 500, headers: NO_STORE }
     );
   }
 }

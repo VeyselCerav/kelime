@@ -4,7 +4,7 @@ import { findWordsForGroup } from '@/lib/module-groups';
 export const RACE_QUESTION_COUNT = 20;
 export const READY_WINDOW_MS = 45000;
 export const INVITE_TTL_MS = 90000;
-export const RACE_TIMER_MS = 90_000;
+export const RACE_TIMER_MS = 120_000;
 export const WIN_BONUS = 25;
 export const POINTS_PER_CORRECT = 2;
 
@@ -33,17 +33,88 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+export async function recentRaceWordIds(params: {
+  moduleId: number;
+  userIds: number[];
+  takeMatches?: number;
+}): Promise<number[]> {
+  const userIds = [...new Set(params.userIds.filter((id) => Number.isFinite(id)))];
+  if (!userIds.length) return [];
+
+  const matches = await prisma.raceMatch.findMany({
+    where: {
+      moduleId: params.moduleId,
+      OR: [
+        { player1Id: { in: userIds } },
+        { player2Id: { in: userIds } },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: params.takeMatches ?? 5,
+    select: { questions: true },
+  });
+
+  const ids: number[] = [];
+  const seen = new Set<number>();
+  for (const match of matches) {
+    const questions = match.questions as RaceQuestion[];
+    for (const q of questions) {
+      const id = Number(q.wordId || q.id);
+      if (!Number.isFinite(id) || seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
+function pickRaceWords<T extends { id: number }>(
+  all: T[],
+  groupWords: T[],
+  excludeIds: number[],
+  count: number
+): T[] {
+  const exclude = new Set(excludeIds);
+  const groupSet = new Set(groupWords.map((w) => w.id));
+  const unused = shuffle(all.filter((w) => !exclude.has(w.id)));
+  const unusedGroup = unused.filter((w) => groupSet.has(w.id));
+  const unusedRest = unused.filter((w) => !groupSet.has(w.id));
+  const picked: T[] = [];
+  const seen = new Set<number>();
+
+  const take = (list: T[]) => {
+    for (const word of list) {
+      if (picked.length >= count) return;
+      if (seen.has(word.id)) continue;
+      seen.add(word.id);
+      picked.push(word);
+    }
+  };
+
+  take(unusedGroup.slice(0, Math.min(8, count)));
+  take(unusedRest);
+  take(unusedGroup);
+  take(shuffle(all));
+  return picked.slice(0, count);
+}
+
 export async function buildRaceQuestions(
   moduleId: number,
-  groupIndex: number
+  groupIndex: number,
+  options?: { excludeWordIds?: number[] }
 ): Promise<RaceQuestion[]> {
   const group = await findWordsForGroup({ moduleId, groupIndex });
-  let words = [...group.words];
+  const all = await prisma.word.findMany({ where: { moduleId } });
+  let words = pickRaceWords(
+    all,
+    group.words,
+    options?.excludeWordIds ?? [],
+    RACE_QUESTION_COUNT
+  );
 
   if (words.length < RACE_QUESTION_COUNT) {
     const extra = await prisma.word.findMany({
       where: {
-        moduleId,
         id: { notIn: words.map((w) => w.id) },
       },
       take: RACE_QUESTION_COUNT - words.length,
@@ -55,7 +126,7 @@ export async function buildRaceQuestions(
     throw new Error('Bu grupta yarış için yeterli kelime yok (en az 4).');
   }
 
-  const selected = shuffle(words).slice(0, RACE_QUESTION_COUNT);
+  const selected = words.slice(0, RACE_QUESTION_COUNT);
   const distractorPool = await prisma.word.findMany({
     where: { moduleId },
     take: 120,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUserId } from '@/lib/race-session';
-import { buildRaceQuestions, INVITE_TTL_MS } from '@/lib/race';
+import { buildRaceQuestions, INVITE_TTL_MS, recentRaceWordIds } from '@/lib/race';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +60,13 @@ export async function POST(
 
   let questions;
   try {
-    questions = await buildRaceQuestions(invite.moduleId, invite.groupIndex);
+    const excludeWordIds = await recentRaceWordIds({
+      moduleId: invite.moduleId,
+      userIds: [invite.fromUserId, invite.toUserId],
+    });
+    questions = await buildRaceQuestions(invite.moduleId, invite.groupIndex, {
+      excludeWordIds,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Soru üretilemedi' },
