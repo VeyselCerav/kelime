@@ -12,6 +12,8 @@ import RaceRosco, {
 
 const CHAR_KEY = 'yds-race-char';
 
+type RaceMode = 'practice' | 'versus';
+
 type ReadyUser = { id: number; username: string };
 type InviteIn = { id: number; from: ReadyUser; createdAt: string };
 type InviteOut = { id: number; to: ReadyUser; createdAt: string };
@@ -70,6 +72,7 @@ export default function RacePage() {
   const [match, setMatch] = useState<MatchPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [character, setCharacter] = useState<RaceCharacter>('male');
+  const [mode, setMode] = useState<RaceMode | null>(null);
   const [solo, setSolo] = useState<SoloState | null>(null);
   const [matchLocked, setMatchLocked] = useState(false);
   const submittedRef = useRef(false);
@@ -93,7 +96,7 @@ export default function RacePage() {
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ready: ready && !inGame,
+        ready: mode === 'versus' && ready && !inGame,
         moduleId: selectedModuleId,
         groupIndex: selectedGroupIndex,
       }),
@@ -105,10 +108,11 @@ export default function RacePage() {
     setOutgoing(data.outgoingInvites || []);
     if (data.activeMatchId && !matchIdRef.current && !solo) {
       matchIdRef.current = data.activeMatchId;
+      setMode('versus');
       setMatchLocked(false);
       setMatchId(data.activeMatchId);
     }
-  }, [ready, selectedModuleId, selectedGroupIndex, inGame, solo]);
+  }, [ready, selectedModuleId, selectedGroupIndex, inGame, solo, mode]);
 
   useEffect(() => {
     if (status !== 'authenticated' || inGame) return;
@@ -179,6 +183,7 @@ export default function RacePage() {
         questionsRef.current = null;
         matchIdRef.current = data.matchId;
         setSolo(null);
+        setMode('versus');
         setMatchLocked(false);
         setMatchId(data.matchId);
       } else {
@@ -215,6 +220,7 @@ export default function RacePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Oyun başlatılamadı');
+      setMode('practice');
       setSolo({ questions: data.questions, result: null });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Hata');
@@ -248,6 +254,78 @@ export default function RacePage() {
     void heartbeat();
   };
 
+  const backToModes = () => {
+    backToLobby();
+    setMode(null);
+    setReady(true);
+    setError('');
+  };
+
+  const characterPicker = (
+    <section>
+      <h2 className="mb-2 font-display text-lg font-semibold">Karakterin</h2>
+      <div className="grid grid-cols-2 gap-3">
+        {(['male', 'female'] as const).map((id) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => pickCharacter(id)}
+            className={`btn-tactile overflow-hidden rounded-card border-2 bg-yellow-400 text-left ${
+              character === id
+                ? 'border-primary shadow-soft'
+                : 'border-transparent opacity-80'
+            }`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={id === 'female' ? '/race/female.png' : '/race/male.png'}
+              alt={id === 'female' ? 'Kadın karakter' : 'Erkek karakter'}
+              className="h-36 w-full object-cover object-top"
+            />
+            <span className="block bg-surface-container-lowest px-3 py-2 text-center text-sm font-bold">
+              {id === 'female' ? 'Kadın' : 'Erkek'}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+
+  const inviteOverlay = incoming[0] && !inGame && !solo && (
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/45 p-4 sm:items-center">
+      <div className="w-full max-w-md rounded-card border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-soft">
+        <p className="text-center text-[11px] font-bold uppercase tracking-wider text-outline">
+          Yarış daveti
+        </p>
+        <h2 className="mt-2 text-center font-display text-2xl font-bold text-on-surface">
+          {incoming[0].from.username}
+        </h2>
+        <p className="mt-2 text-center text-sm text-on-surface-variant">
+          Seni harf çemberi yarışına davet etti. Kabul edersen aynı 20 kelime
+          ikinize de gelir.
+        </p>
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void respond(incoming[0].id, 'accept')}
+            className="btn-tactile flex-1 rounded-full bg-primary py-3 text-sm font-bold text-on-primary"
+          >
+            Kabul et
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void respond(incoming[0].id, 'decline')}
+            className="btn-tactile flex-1 rounded-full border border-outline-variant/50 py-3 text-sm font-bold"
+          >
+            Reddet
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (status === 'loading') {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -268,12 +346,23 @@ export default function RacePage() {
 
   return (
     <div className="app-shell space-y-6 py-4">
+      {inviteOverlay}
+
       {!playing && !soloPlaying && (
         <div>
-          <h1 className="font-display text-2xl font-bold text-on-surface">Yarış</h1>
+          <h1 className="font-display text-2xl font-bold text-on-surface">
+            {mode === 'practice'
+              ? 'Antrenman'
+              : mode === 'versus'
+                ? 'Rakiple yarış'
+                : 'Yarış'}
+          </h1>
           <p className="mt-1 text-sm text-on-surface-variant">
-            Harf çemberinde tanımı gör, İngilizce kelimeyi yaz. 90 saniye, pas
-            serbest. Rakip yoksa tek başına oyna.
+            {mode === 'practice'
+              ? 'Tek başına harf çemberi. 90 saniye, pas serbest. Puan yazılmaz.'
+              : mode === 'versus'
+                ? 'Çevrimiçi rakip davet et. Aynı 20 kelime, en çok doğru kazanır.'
+                : 'Antrenman mı, yoksa rakiple yarış mı?'}
           </p>
         </div>
       )}
@@ -282,37 +371,82 @@ export default function RacePage() {
         <p className="rounded-card bg-error/10 p-3 text-sm text-error">{error}</p>
       )}
 
-      {!matchId && !solo && (
-        <>
-          <StudyScopePicker />
+      {!matchId && !solo && mode === null && (
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => {
+              setError('');
+              setMode('practice');
+            }}
+            className="btn-tactile paper-texture w-full rounded-card border border-outline-variant/40 p-5 text-left"
+          >
+            <span className="material-symbols-outlined text-4xl text-primary">
+              fitness_center
+            </span>
+            <span className="mt-3 block font-display text-xl font-bold">
+              Antrenman
+            </span>
+            <span className="mt-1 block text-sm text-on-surface-variant">
+              Tek başına harf çemberi. Tanımı gör, İngilizce kelimeyi yaz. 90
+              saniye, pas serbest.
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setError('');
+              setMode('versus');
+            }}
+            className="btn-tactile paper-texture w-full rounded-card border border-outline-variant/40 p-5 text-left"
+          >
+            <span className="material-symbols-outlined text-4xl text-secondary">
+              swords
+            </span>
+            <span className="mt-3 block font-display text-xl font-bold">
+              Rakiple yarış
+            </span>
+            <span className="mt-1 block text-sm text-on-surface-variant">
+              Hazır oyuncuları gör, davet at. Aynı 20 kelime; eşitlikte daha
+              hızlı olan önde.
+            </span>
+          </button>
+        </div>
+      )}
 
-          <section>
-            <h2 className="mb-2 font-display text-lg font-semibold">Karakterin</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {(['male', 'female'] as const).map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => pickCharacter(id)}
-                  className={`btn-tactile overflow-hidden rounded-card border-2 bg-yellow-400 text-left ${
-                    character === id
-                      ? 'border-primary shadow-soft'
-                      : 'border-transparent opacity-80'
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={id === 'female' ? '/race/female.png' : '/race/male.png'}
-                    alt={id === 'female' ? 'Kadın karakter' : 'Erkek karakter'}
-                    className="h-36 w-full object-cover object-top"
-                  />
-                  <span className="block bg-surface-container-lowest px-3 py-2 text-center text-sm font-bold">
-                    {id === 'female' ? 'Kadın' : 'Erkek'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
+      {!matchId && !solo && mode === 'practice' && (
+        <>
+          <button
+            type="button"
+            onClick={backToModes}
+            className="text-sm font-bold text-primary"
+          >
+            ← Mod seç
+          </button>
+          <StudyScopePicker />
+          {characterPicker}
+          <button
+            type="button"
+            disabled={busy || !selectedModuleId}
+            onClick={() => void startSolo()}
+            className="btn-tactile w-full rounded-full bg-primary py-3 font-bold text-on-primary disabled:opacity-40"
+          >
+            Antrenmana başla
+          </button>
+        </>
+      )}
+
+      {!matchId && !solo && mode === 'versus' && (
+        <>
+          <button
+            type="button"
+            onClick={backToModes}
+            className="text-sm font-bold text-primary"
+          >
+            ← Mod seç
+          </button>
+          <StudyScopePicker />
+          {characterPicker}
 
           <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-outline-variant/40 bg-surface-container-lowest px-4 py-3">
             <span>
@@ -340,41 +474,6 @@ export default function RacePage() {
             </span>
           </label>
 
-          {incoming[0] && (
-            <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/45 p-4 sm:items-center">
-              <div className="w-full max-w-md rounded-card border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-soft">
-                <p className="text-center text-[11px] font-bold uppercase tracking-wider text-outline">
-                  Yarış daveti
-                </p>
-                <h2 className="mt-2 text-center font-display text-2xl font-bold text-on-surface">
-                  {incoming[0].from.username}
-                </h2>
-                <p className="mt-2 text-center text-sm text-on-surface-variant">
-                  Seni harf çemberi yarışına davet etti. Kabul edersen aynı 20
-                  kelime ikinize de gelir.
-                </p>
-                <div className="mt-5 flex gap-2">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void respond(incoming[0].id, 'accept')}
-                    className="btn-tactile flex-1 rounded-full bg-primary py-3 text-sm font-bold text-on-primary"
-                  >
-                    Kabul et
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void respond(incoming[0].id, 'decline')}
-                    className="btn-tactile flex-1 rounded-full border border-outline-variant/50 py-3 text-sm font-bold"
-                  >
-                    Reddet
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {outgoing.length > 0 && (
             <div className="rounded-card border border-outline-variant/30 bg-surface-container-lowest p-4">
               {outgoing.map((inv) => (
@@ -395,15 +494,6 @@ export default function RacePage() {
             </div>
           )}
 
-          <button
-            type="button"
-            disabled={busy || !selectedModuleId}
-            onClick={() => void startSolo()}
-            className="btn-tactile w-full rounded-full bg-primary py-3 font-bold text-on-primary disabled:opacity-40"
-          >
-            Tek başına oyna
-          </button>
-
           <section>
             <h2 className="mb-2 font-display text-lg font-semibold">Hazır yarışmacılar</h2>
             {readyUsers.length === 0 ? (
@@ -415,8 +505,8 @@ export default function RacePage() {
                   Şu an rakip yok
                 </p>
                 <p className="mt-1 text-sm text-on-surface-variant">
-                  Yukarıdan tek başına oynayabilirsin. Biri gelince davet de
-                  atabilirsin.
+                  Bu ekranda kal, biri gelince davet atabilirsin. Antrenman için
+                  Mod seç’e dön.
                 </p>
                 {selectedGroup && (
                   <p className="mt-3 text-xs text-outline">
@@ -463,7 +553,7 @@ export default function RacePage() {
           key="solo"
           questions={solo.questions}
           character={character}
-          subtitle="Tek oyun · 90 saniye"
+          subtitle="Antrenman · 90 saniye"
           onComplete={(result) =>
             setSolo((prev) => (prev ? { ...prev, result } : prev))
           }
@@ -526,6 +616,13 @@ export default function RacePage() {
           >
             Lobiye dön
           </button>
+          <button
+            type="button"
+            onClick={backToModes}
+            className="mt-3 w-full py-2 text-sm font-bold text-primary"
+          >
+            Mod seç
+          </button>
         </div>
       )}
 
@@ -534,7 +631,7 @@ export default function RacePage() {
           <span className="material-symbols-outlined text-5xl text-primary">
             military_tech
           </span>
-          <h2 className="mt-3 font-display text-2xl font-bold">Tek oyun bitti</h2>
+          <h2 className="mt-3 font-display text-2xl font-bold">Antrenman bitti</h2>
           <p className="mt-2 text-sm text-on-surface-variant">
             {solo.result.correctCount}/{solo.questions.length} doğru ·{' '}
             {formatMs(solo.result.durationMs)}
@@ -544,7 +641,14 @@ export default function RacePage() {
             onClick={backToLobby}
             className="btn-tactile mt-6 w-full rounded-full bg-primary py-3 font-bold text-on-primary"
           >
-            Lobiye dön
+            Antrenmana dön
+          </button>
+          <button
+            type="button"
+            onClick={backToModes}
+            className="mt-3 w-full py-2 text-sm font-bold text-primary"
+          >
+            Mod seç
           </button>
         </div>
       )}
