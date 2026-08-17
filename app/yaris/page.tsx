@@ -3,8 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useModule } from '../context/ModuleContext';
-import Quiz, { QuizQuestion, QuizResultSummary } from '../components/Quiz';
 import StudyScopePicker from '../components/StudyScopePicker';
+import RaceRosco, {
+  RaceCharacter,
+  RoscoResult,
+  RoscoSource,
+} from '../components/RaceRosco';
+
+const CHAR_KEY = 'yds-race-char';
 
 type ReadyUser = { id: number; username: string };
 type InviteIn = { id: number; from: ReadyUser; createdAt: string };
@@ -15,7 +21,7 @@ type MatchPayload = {
   status: string;
   startedAt: string;
   winnerId: number | null;
-  questions: QuizQuestion[];
+  questions: RoscoSource[];
   me: ReadyUser;
   opponent: ReadyUser;
   myResult: {
@@ -35,6 +41,11 @@ type MatchPayload = {
   bothFinished: boolean;
 };
 
+type SoloState = {
+  questions: RoscoSource[];
+  result: RoscoResult | null;
+};
+
 function formatMs(ms: number) {
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
@@ -42,8 +53,13 @@ function formatMs(ms: number) {
   return `${m}:${r.toString().padStart(2, '0')}`;
 }
 
+function readChar(): RaceCharacter {
+  if (typeof window === 'undefined') return 'male';
+  return window.localStorage.getItem(CHAR_KEY) === 'female' ? 'female' : 'male';
+}
+
 export default function RacePage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const { selectedModuleId, selectedGroupIndex, selectedGroup } = useModule();
   const [ready, setReady] = useState(true);
   const [readyUsers, setReadyUsers] = useState<ReadyUser[]>([]);
@@ -53,9 +69,23 @@ export default function RacePage() {
   const [matchId, setMatchId] = useState<number | null>(null);
   const [match, setMatch] = useState<MatchPayload | null>(null);
   const [busy, setBusy] = useState(false);
+  const [character, setCharacter] = useState<RaceCharacter>('male');
+  const [solo, setSolo] = useState<SoloState | null>(null);
+  const [matchLocked, setMatchLocked] = useState(false);
   const submittedRef = useRef(false);
-  const questionsRef = useRef<QuizQuestion[] | null>(null);
+  const questionsRef = useRef<RoscoSource[] | null>(null);
   const matchIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setCharacter(readChar());
+  }, []);
+
+  const pickCharacter = (next: RaceCharacter) => {
+    setCharacter(next);
+    window.localStorage.setItem(CHAR_KEY, next);
+  };
+
+  const inGame = Boolean(matchId || (solo && !solo.result));
 
   const heartbeat = useCallback(async () => {
     const res = await fetch('/api/race/lobby', {
@@ -63,7 +93,7 @@ export default function RacePage() {
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ready,
+        ready: ready && !inGame,
         moduleId: selectedModuleId,
         groupIndex: selectedGroupIndex,
       }),
@@ -73,18 +103,19 @@ export default function RacePage() {
     setReadyUsers(data.readyUsers || []);
     setIncoming(data.incomingInvites || []);
     setOutgoing(data.outgoingInvites || []);
-    if (data.activeMatchId && !matchIdRef.current) {
+    if (data.activeMatchId && !matchIdRef.current && !solo) {
       matchIdRef.current = data.activeMatchId;
+      setMatchLocked(false);
       setMatchId(data.activeMatchId);
     }
-  }, [ready, selectedModuleId, selectedGroupIndex]);
+  }, [ready, selectedModuleId, selectedGroupIndex, inGame, solo]);
 
   useEffect(() => {
-    if (status !== 'authenticated' || matchId) return;
+    if (status !== 'authenticated' || inGame) return;
     void heartbeat();
     const t = window.setInterval(() => void heartbeat(), 1500);
     return () => window.clearInterval(t);
-  }, [status, matchId, heartbeat]);
+  }, [status, inGame, heartbeat]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -147,6 +178,8 @@ export default function RacePage() {
         submittedRef.current = false;
         questionsRef.current = null;
         matchIdRef.current = data.matchId;
+        setSolo(null);
+        setMatchLocked(false);
         setMatchId(data.matchId);
       } else {
         void heartbeat();
@@ -158,13 +191,49 @@ export default function RacePage() {
     }
   };
 
-  const onQuizComplete = async (results: QuizResultSummary) => {
+  const startSolo = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await fetch('/api/race/lobby', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ready: false,
+          moduleId: selectedModuleId,
+          groupIndex: selectedGroupIndex,
+        }),
+      });
+      const res = await fetch('/api/race/solo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          moduleId: selectedModuleId,
+          groupIndex: selectedGroupIndex,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Oyun başlatılamadı');
+      setSolo({ questions: data.questions, result: null });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Hata');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onMatchComplete = async (result: RoscoResult) => {
     if (!matchId || submittedRef.current) return;
     submittedRef.current = true;
+    setMatchLocked(true);
     await fetch(`/api/race/match/${matchId}/finish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correctCount: results.correctAnswers }),
+      body: JSON.stringify({
+        correctCount: result.correctCount,
+        durationMs: result.durationMs,
+      }),
     });
   };
 
@@ -173,6 +242,8 @@ export default function RacePage() {
     questionsRef.current = null;
     setMatchId(null);
     setMatch(null);
+    setSolo(null);
+    setMatchLocked(false);
     submittedRef.current = false;
     void heartbeat();
   };
@@ -185,26 +256,63 @@ export default function RacePage() {
     );
   }
 
-  const playing = Boolean(match && match.status === 'playing' && !match.myResult);
-  const waitingOpp = Boolean(match && match.myResult && !match.bothFinished);
   const finished = Boolean(match && (match.status === 'finished' || match.bothFinished));
+  const playing = Boolean(
+    match && match.status === 'playing' && !match.myResult && !matchLocked
+  );
+  const waitingOpp = Boolean(
+    match && !finished && (match.myResult || matchLocked)
+  );
+  const soloPlaying = Boolean(solo && !solo.result);
+  const soloDone = Boolean(solo?.result);
 
   return (
     <div className="app-shell space-y-6 py-4">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-on-surface">Yarış</h1>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Aynı 20 soru, en çok doğru kazanır. Eşitlikte daha hızlı olan önde.
-        </p>
-      </div>
+      {!playing && !soloPlaying && (
+        <div>
+          <h1 className="font-display text-2xl font-bold text-on-surface">Yarış</h1>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Harf çemberinde tanımı gör, İngilizce kelimeyi yaz. 90 saniye, pas
+            serbest. Rakip yoksa tek başına oyna.
+          </p>
+        </div>
+      )}
 
       {error && (
         <p className="rounded-card bg-error/10 p-3 text-sm text-error">{error}</p>
       )}
 
-      {!matchId && (
+      {!matchId && !solo && (
         <>
           <StudyScopePicker />
+
+          <section>
+            <h2 className="mb-2 font-display text-lg font-semibold">Karakterin</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {(['male', 'female'] as const).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => pickCharacter(id)}
+                  className={`btn-tactile overflow-hidden rounded-card border-2 bg-yellow-400 text-left ${
+                    character === id
+                      ? 'border-primary shadow-soft'
+                      : 'border-transparent opacity-80'
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={id === 'female' ? '/race/female.png' : '/race/male.png'}
+                    alt={id === 'female' ? 'Kadın karakter' : 'Erkek karakter'}
+                    className="h-36 w-full object-cover object-top"
+                  />
+                  <span className="block bg-surface-container-lowest px-3 py-2 text-center text-sm font-bold">
+                    {id === 'female' ? 'Kadın' : 'Erkek'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
 
           <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-outline-variant/40 bg-surface-container-lowest px-4 py-3">
             <span>
@@ -242,8 +350,8 @@ export default function RacePage() {
                   {incoming[0].from.username}
                 </h2>
                 <p className="mt-2 text-center text-sm text-on-surface-variant">
-                  Seni 20 soruluk yarışa davet etti. Kabul edersen aynı sorular
-                  ikinize de gelir.
+                  Seni harf çemberi yarışına davet etti. Kabul edersen aynı 20
+                  kelime ikinize de gelir.
                 </p>
                 <div className="mt-5 flex gap-2">
                   <button
@@ -287,6 +395,15 @@ export default function RacePage() {
             </div>
           )}
 
+          <button
+            type="button"
+            disabled={busy || !selectedModuleId}
+            onClick={() => void startSolo()}
+            className="btn-tactile w-full rounded-full bg-primary py-3 font-bold text-on-primary disabled:opacity-40"
+          >
+            Tek başına oyna
+          </button>
+
           <section>
             <h2 className="mb-2 font-display text-lg font-semibold">Hazır yarışmacılar</h2>
             {readyUsers.length === 0 ? (
@@ -295,15 +412,15 @@ export default function RacePage() {
                   hourglass_top
                 </span>
                 <p className="mt-3 font-display text-xl font-semibold">
-                  Yarışmacı bekleniyor
+                  Şu an rakip yok
                 </p>
                 <p className="mt-1 text-sm text-on-surface-variant">
-                  Çevrimiçi ve hazır başka kullanıcı yok. Bu ekranda kal, biri
-                  gelince davet atabilirsin.
+                  Yukarıdan tek başına oynayabilirsin. Biri gelince davet de
+                  atabilirsin.
                 </p>
                 {selectedGroup && (
                   <p className="mt-3 text-xs text-outline">
-                    Davet, senin seçiminle gider: {selectedGroup.label}
+                    Oyun grubu: {selectedGroup.label}
                   </p>
                 )}
               </div>
@@ -332,19 +449,25 @@ export default function RacePage() {
       )}
 
       {playing && match && (
-        <div>
-          <p className="mb-4 text-center text-sm font-semibold text-secondary">
-            Rakip: {match.opponent.username}
-          </p>
-          <Quiz
-            key={match.id}
-            questions={match.questions}
-            isAuthenticated
-            examMode
-            hideCompleteScreen
-            onComplete={(r) => void onQuizComplete(r)}
-          />
-        </div>
+        <RaceRosco
+          key={`match-${match.id}`}
+          questions={match.questions}
+          character={character}
+          subtitle={`Rakip: ${match.opponent.username}`}
+          onComplete={(r) => void onMatchComplete(r)}
+        />
+      )}
+
+      {soloPlaying && solo && (
+        <RaceRosco
+          key="solo"
+          questions={solo.questions}
+          character={character}
+          subtitle="Tek oyun · 90 saniye"
+          onComplete={(result) =>
+            setSolo((prev) => (prev ? { ...prev, result } : prev))
+          }
+        />
       )}
 
       {waitingOpp && match && (
@@ -356,8 +479,9 @@ export default function RacePage() {
             Rakip çözüyor…
           </h2>
           <p className="mt-2 text-sm text-on-surface-variant">
-            Senin skorun: {match.myResult?.correctCount}/
-            {match.questions.length} doğru · {formatMs(match.myResult?.durationMs || 0)}
+            {match.myResult
+              ? `Senin skorun: ${match.myResult.correctCount}/${match.questions.length} doğru · ${formatMs(match.myResult.durationMs || 0)}`
+              : 'Skorun kaydediliyor…'}
           </p>
         </div>
       )}
@@ -394,6 +518,26 @@ export default function RacePage() {
           </div>
           <p className="mt-3 text-sm font-semibold text-primary">
             +{match.myResult?.points ?? 0} puan
+          </p>
+          <button
+            type="button"
+            onClick={backToLobby}
+            className="btn-tactile mt-6 w-full rounded-full bg-primary py-3 font-bold text-on-primary"
+          >
+            Lobiye dön
+          </button>
+        </div>
+      )}
+
+      {soloDone && solo?.result && (
+        <div className="paper-texture rounded-card border border-outline-variant/40 p-8 text-center">
+          <span className="material-symbols-outlined text-5xl text-primary">
+            military_tech
+          </span>
+          <h2 className="mt-3 font-display text-2xl font-bold">Tek oyun bitti</h2>
+          <p className="mt-2 text-sm text-on-surface-variant">
+            {solo.result.correctCount}/{solo.questions.length} doğru ·{' '}
+            {formatMs(solo.result.durationMs)}
           </p>
           <button
             type="button"

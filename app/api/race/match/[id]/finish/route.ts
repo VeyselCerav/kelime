@@ -31,7 +31,11 @@ export async function POST(
   const questions = match.questions as RaceQuestion[];
   const qCount = questions.length;
   const safeCorrect = Math.min(correctCount, qCount);
-  const durationMs = Math.max(0, Date.now() - match.startedAt.getTime());
+  const elapsed = Math.max(0, Date.now() - match.startedAt.getTime());
+  const requested = parseInt(String(body.durationMs), 10);
+  const durationMs = Number.isFinite(requested)
+    ? Math.min(Math.max(requested, 0), Math.min(elapsed + 5000, 120_000))
+    : elapsed;
   const opponentId =
     match.player1Id === auth.userId ? match.player2Id : match.player1Id;
 

@@ -4,6 +4,7 @@ import { findWordsForGroup } from '@/lib/module-groups';
 export const RACE_QUESTION_COUNT = 20;
 export const READY_WINDOW_MS = 45000;
 export const INVITE_TTL_MS = 90000;
+export const RACE_TIMER_MS = 90_000;
 export const WIN_BONUS = 25;
 export const POINTS_PER_CORRECT = 2;
 
@@ -13,7 +14,15 @@ export type RaceQuestion = {
   options: string[];
   answer: string;
   wordId: number;
+  english: string;
+  turkish: string;
+  letter: string;
 };
+
+export function wordLetter(english: string): string {
+  const ch = english.trim().match(/[A-Za-z]/);
+  return (ch ? ch[0] : english.trim().charAt(0) || '?').toUpperCase();
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -77,6 +86,9 @@ export async function buildRaceQuestions(
       options: shuffle([...wrong.slice(0, 3), word.turkish]),
       answer: word.turkish,
       wordId: word.id,
+      english: word.english,
+      turkish: word.turkish,
+      letter: wordLetter(word.english),
     };
   });
 }
