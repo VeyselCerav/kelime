@@ -16,9 +16,17 @@ export type RoscoSource = {
   letter?: string;
 };
 
+export type RoscoMiss = {
+  letter: string;
+  turkish: string;
+  english: string;
+  kind: 'wrong' | 'skipped';
+};
+
 export type RoscoResult = {
   correctCount: number;
   durationMs: number;
+  missed: RoscoMiss[];
 };
 
 type LetterStatus = 'pending' | 'passed' | 'correct' | 'wrong';
@@ -103,9 +111,22 @@ export default function RaceRosco({
     doneRef.current = true;
     setEnded(true);
     const correctCount = st.filter((s) => s === 'correct').length;
+    const missed: RoscoMiss[] = items.flatMap((entry, i) => {
+      const s = st[i];
+      if (s === 'correct') return [];
+      return [
+        {
+          letter: entry.letter,
+          turkish: entry.turkish,
+          english: entry.english,
+          kind: s === 'wrong' ? 'wrong' : 'skipped',
+        },
+      ];
+    });
     onComplete({
       correctCount,
       durationMs: Math.min(RACE_TIMER_MS, Date.now() - startRef.current),
+      missed,
     });
   };
 

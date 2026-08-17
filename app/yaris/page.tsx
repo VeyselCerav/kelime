@@ -6,6 +6,7 @@ import { useModule } from '../context/ModuleContext';
 import StudyScopePicker from '../components/StudyScopePicker';
 import RaceRosco, {
   RaceCharacter,
+  RoscoMiss,
   RoscoResult,
   RoscoSource,
 } from '../components/RaceRosco';
@@ -55,6 +56,48 @@ function formatMs(ms: number) {
   return `${m}:${r.toString().padStart(2, '0')}`;
 }
 
+function MissedAnswers({ items }: { items: RoscoMiss[] }) {
+  const wrong = items.filter((m) => m.kind === 'wrong');
+  const skipped = items.filter((m) => m.kind === 'skipped');
+  if (wrong.length === 0 && skipped.length === 0) return null;
+
+  const Block = ({
+    title,
+    rows,
+  }: {
+    title: string;
+    rows: RoscoMiss[];
+  }) =>
+    rows.length === 0 ? null : (
+      <div className="mt-4 text-left">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-outline">
+          {title}
+        </p>
+        <ul className="space-y-2">
+          {rows.map((m, i) => (
+            <li
+              key={`${m.letter}-${m.english}-${i}`}
+              className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-3 py-2.5"
+            >
+              <p className="text-xs font-bold text-outline">{m.letter} ile başlar</p>
+              <p className="text-sm text-on-surface-variant">{m.turkish}</p>
+              <p className="mt-0.5 font-semibold text-primary">
+                Doğrusu: {m.english}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+
+  return (
+    <>
+      <Block title="Yanlışların doğrusu" rows={wrong} />
+      <Block title="Pas / boş kalanlar" rows={skipped} />
+    </>
+  );
+}
+
 function readChar(): RaceCharacter {
   if (typeof window === 'undefined') return 'male';
   return window.localStorage.getItem(CHAR_KEY) === 'female' ? 'female' : 'male';
@@ -75,6 +118,7 @@ export default function RacePage() {
   const [mode, setMode] = useState<RaceMode | null>(null);
   const [solo, setSolo] = useState<SoloState | null>(null);
   const [matchLocked, setMatchLocked] = useState(false);
+  const [review, setReview] = useState<RoscoMiss[]>([]);
   const submittedRef = useRef(false);
   const questionsRef = useRef<RoscoSource[] | null>(null);
   const matchIdRef = useRef<number | null>(null);
@@ -233,6 +277,7 @@ export default function RacePage() {
     if (!matchId || submittedRef.current) return;
     submittedRef.current = true;
     setMatchLocked(true);
+    setReview(result.missed || []);
     await fetch(`/api/race/match/${matchId}/finish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -250,6 +295,7 @@ export default function RacePage() {
     setMatch(null);
     setSolo(null);
     setMatchLocked(false);
+    setReview([]);
     submittedRef.current = false;
     void heartbeat();
   };
@@ -614,6 +660,7 @@ export default function RacePage() {
           <p className="mt-3 text-sm font-semibold text-primary">
             +{match.myResult?.points ?? 0} puan
           </p>
+          <MissedAnswers items={review} />
           <button
             type="button"
             onClick={backToLobby}
@@ -641,6 +688,7 @@ export default function RacePage() {
             {solo.result.correctCount}/{solo.questions.length} doğru ·{' '}
             {formatMs(solo.result.durationMs)}
           </p>
+          <MissedAnswers items={solo.result.missed || []} />
           <button
             type="button"
             onClick={backToLobby}
