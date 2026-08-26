@@ -2,8 +2,20 @@
 
 import { useModule } from '../context/ModuleContext';
 
-export default function ModulePicker({ compact = false }: { compact?: boolean }) {
-  const { modules, selectedModuleId, setSelectedModuleId, isLoading } = useModule();
+function shortName(m: { slug: string; name: string }) {
+  if (m.slug === 'genel') return 'Genel';
+  if (m.slug === 'en-sik-cikan') return 'En Sık Çıkan';
+  if (m.slug === 'tense-anahtar') return 'Tense';
+  return m.name;
+}
+
+export default function ModulePicker({
+  compact = false,
+}: {
+  compact?: boolean;
+}) {
+  const { modules, selectedModuleId, setSelectedModuleId, isLoading } =
+    useModule();
 
   if (isLoading) {
     return (
@@ -11,14 +23,43 @@ export default function ModulePicker({ compact = false }: { compact?: boolean })
     );
   }
 
+  if (compact) {
+    return (
+      <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {modules.map((m) => {
+          const active = m.id === selectedModuleId;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setSelectedModuleId(m.id)}
+              className={`btn-tactile shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                active
+                  ? 'border-primary bg-primary text-on-primary'
+                  : 'border-outline-variant/40 bg-surface-container-lowest text-on-surface'
+              }`}
+            >
+              {shortName(m)}
+              <span
+                className={`ml-1.5 text-xs ${
+                  active ? 'text-on-primary/75' : 'text-on-surface-variant'
+                }`}
+              >
+                {m.wordCount}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div
       className={`grid gap-3 ${
-        compact
-          ? 'grid-cols-2'
-          : modules.length > 2
-            ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-            : 'grid-cols-1 sm:grid-cols-2'
+        modules.length > 2
+          ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+          : 'grid-cols-1 sm:grid-cols-2'
       }`}
     >
       {modules.map((m, i) => {
@@ -61,7 +102,7 @@ export default function ModulePicker({ compact = false }: { compact?: boolean })
               >
                 {icon}
               </span>
-              <span className="font-display text-lg font-semibold text-on-surface line-clamp-2">
+              <span className="line-clamp-2 font-display text-lg font-semibold text-on-surface">
                 {m.name}
               </span>
             </div>

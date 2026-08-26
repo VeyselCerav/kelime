@@ -82,6 +82,22 @@ export default function Home() {
     return 'İyi akşamlar';
   };
 
+  const moduleLabel = (() => {
+    if (!selectedModule) return 'Modül seçin';
+    if (selectedModule.slug === 'genel') return 'Genel';
+    if (selectedModule.slug === 'en-sik-cikan') return 'En Sık Çıkan';
+    if (selectedModule.slug === 'tense-anahtar') return 'Tense';
+    return selectedModule.name;
+  })();
+
+  const continueSubtitle = selectedGroup
+    ? `${selectedGroup.label}${
+        selectedGroup.start && selectedGroup.end
+          ? ` · ${selectedGroup.start}–${selectedGroup.end}`
+          : ''
+      }`
+    : 'Alt grup seçilince buradan devam';
+
   return (
     <div className="app-shell space-y-8 py-4">
       <section className="flex items-center justify-between">
@@ -99,12 +115,41 @@ export default function Home() {
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-3 font-display text-xl font-semibold text-on-surface">
-          Modül Seç
-        </h2>
-        <ModulePicker />
-        <label className="mt-4 flex cursor-pointer items-center justify-between rounded-2xl border border-outline-variant/40 bg-surface-container-lowest px-4 py-3">
+      <section className="space-y-3">
+        <Link
+          href="/flashcards"
+          className="btn-tactile soft-shadow flex w-full items-center gap-4 rounded-card bg-primary p-5 text-on-primary"
+        >
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+            <span className="material-symbols-outlined text-[28px]">
+              play_arrow
+            </span>
+          </span>
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block text-[11px] font-bold uppercase tracking-wider text-on-primary/70">
+              Devam et
+            </span>
+            <span className="mt-0.5 block truncate font-display text-xl font-bold">
+              {moduleLabel}
+            </span>
+            <span className="mt-0.5 block truncate text-sm text-on-primary/80">
+              {continueSubtitle}
+              {unlearnedOnly ? ' · Ezberleyemediklerim' : ''}
+            </span>
+          </span>
+          <span className="material-symbols-outlined shrink-0 text-[28px]">
+            trending_flat
+          </span>
+        </Link>
+
+        <div>
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-outline">
+            Modül
+          </p>
+          <ModulePicker compact />
+        </div>
+
+        <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-outline-variant/40 bg-surface-container-lowest px-4 py-3">
           <span className="pr-4">
             <span className="block font-display text-sm font-semibold text-on-surface">
               Sadece ezberleyemediklerim
@@ -137,11 +182,6 @@ export default function Home() {
       {scope && (
         <section>
           <ScopeProgressBar progress={scope} showModule />
-          {selectedGroup && (
-            <p className="mt-2 text-xs text-on-surface-variant">
-              Seçili alt grup: {selectedGroup.label}
-            </p>
-          )}
         </section>
       )}
 
@@ -153,9 +193,7 @@ export default function Home() {
           <p className="max-w-[180px] text-sm text-on-surface-variant">
             Bugün {dailyDone}/{goalTarget} kelime. Devam et!
           </p>
-          <p className="text-xs font-medium text-primary">
-            {selectedModule?.name || 'Modül seçin'}
-          </p>
+          <p className="text-xs font-medium text-primary">{moduleLabel}</p>
         </div>
         <div className="relative flex items-center justify-center">
           <svg className="h-24 w-24" viewBox="0 0 100 100">
@@ -190,7 +228,7 @@ export default function Home() {
       <section className="grid grid-cols-2 gap-4">
         <Link
           href="/flashcards"
-          className="btn-tactile flex h-48 flex-col justify-between rounded-card bg-secondary-container p-6 shadow-soft"
+          className="btn-tactile flex h-36 flex-col justify-between rounded-card bg-secondary-container p-5 shadow-soft"
         >
           <div className="self-start rounded-xl bg-white/30 p-2">
             <span className="material-symbols-outlined text-on-secondary-container">
@@ -198,17 +236,17 @@ export default function Home() {
             </span>
           </div>
           <div>
-            <h3 className="font-display text-xl font-semibold text-on-secondary-container">
-              Öğrenmeye Başla
+            <h3 className="font-display text-lg font-semibold text-on-secondary-container">
+              Kartlar
             </h3>
-            <p className="text-sm text-on-secondary-container/80">
-              Yeni kelimeler
+            <p className="text-xs text-on-secondary-container/80">
+              {continueSubtitle}
             </p>
           </div>
         </Link>
         <Link
           href="/quiz"
-          className="btn-tactile flex h-48 flex-col justify-between rounded-card bg-primary-container p-6 shadow-soft"
+          className="btn-tactile flex h-36 flex-col justify-between rounded-card bg-primary-container p-5 shadow-soft"
         >
           <div className="self-start rounded-xl bg-white/30 p-2">
             <span className="material-symbols-outlined text-on-primary-container">
@@ -216,11 +254,11 @@ export default function Home() {
             </span>
           </div>
           <div>
-            <h3 className="font-display text-xl font-semibold text-on-primary-container">
-              Quiz Çöz
+            <h3 className="font-display text-lg font-semibold text-on-primary-container">
+              Quiz
             </h3>
-            <p className="text-sm text-on-primary-container/80">
-              Bilgini test et
+            <p className="text-xs text-on-primary-container/80">
+              {moduleLabel}
             </p>
           </div>
         </Link>
