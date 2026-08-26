@@ -231,22 +231,22 @@ export default function RaceRosco({
   const remainPct = Math.max(0, (remainMs / RACE_TIMER_MS) * 100);
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-2">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-2.5">
       {subtitle && (
-        <p className="text-center text-xs font-semibold text-secondary">
+        <p className="text-center text-sm font-semibold text-secondary">
           {subtitle}
         </p>
       )}
 
       <div className="flex items-center justify-between gap-2 px-1">
         <p
-          className={`font-display text-xl font-bold tabular-nums ${
+          className={`font-display text-2xl font-bold tabular-nums sm:text-3xl ${
             urgent ? 'text-error' : 'text-on-surface'
           }`}
         >
           {formatRemain(remainMs)}
         </p>
-        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-container">
+        <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-container">
           <div
             className={`h-full rounded-full ${
               urgent ? 'bg-error' : 'bg-primary'
@@ -254,12 +254,12 @@ export default function RaceRosco({
             style={{ width: `${remainPct}%` }}
           />
         </div>
-        <p className="shrink-0 text-xs font-bold text-outline">
+        <p className="shrink-0 text-sm font-bold text-outline">
           {statuses.filter((s) => s === 'correct').length}/{items.length}
         </p>
       </div>
 
-      <div className="relative mx-auto aspect-square w-[min(100%,220px)] sm:w-[min(100%,260px)]">
+      <div className="relative mx-auto aspect-square w-[min(100%,260px)] sm:w-[min(100%,300px)]">
         <div className="absolute left-1/2 top-1/2 z-[1] h-[42%] w-[42%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-[3px] border-yellow-400 bg-yellow-400 shadow-soft">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -279,7 +279,7 @@ export default function RaceRosco({
           return (
             <span
               key={`${letterItem.wordId}-${i}`}
-              className={`absolute flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-colors sm:h-8 sm:w-8 sm:text-sm ${
+              className={`absolute flex h-8 w-8 items-center justify-center rounded-full text-sm font-black transition-colors sm:h-9 sm:w-9 sm:text-base ${
                 active
                   ? 'rosco-active bg-yellow-300 text-on-surface'
                   : st === 'correct'
@@ -302,32 +302,32 @@ export default function RaceRosco({
         })}
       </div>
 
-      <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-3 shadow-soft">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-soft">
         {item && (
           <>
-            <p className="text-center text-[10px] font-bold uppercase tracking-wider text-outline">
+            <p className="text-center text-[11px] font-bold uppercase tracking-wider text-outline">
               {item.letter} ile başlar
             </p>
-            <p className="mt-0.5 text-center font-display text-base font-semibold leading-snug text-on-surface sm:text-lg">
+            <p className="mt-1 text-center font-display text-lg font-semibold leading-snug text-on-surface sm:text-xl">
               {item.turkish}
             </p>
             {feedback === 'ok' && (
-              <p className="mt-1 text-center text-sm font-bold text-primary">
+              <p className="mt-1.5 text-center text-base font-bold text-primary">
                 Doğru! {item.english}
               </p>
             )}
             {feedback === 'bad' && (
-              <p className="mt-1 text-center text-sm font-bold text-error">
+              <p className="mt-1.5 text-center text-base font-bold text-error">
                 Yanlış · doğrusu: {item.english}
               </p>
             )}
             {ended && !feedback && (
-              <p className="mt-1 text-center text-sm font-bold text-secondary">
+              <p className="mt-1.5 text-center text-base font-bold text-secondary">
                 Tur bitti
               </p>
             )}
 
-            <div className="mt-2 grid gap-1.5">
+            <div className="mt-3 grid gap-2">
               {item.options.map((opt) => {
                 const isPicked = picked === opt;
                 const isCorrectOpt =
@@ -348,7 +348,7 @@ export default function RaceRosco({
                     type="button"
                     disabled={Boolean(feedback) || ended}
                     onClick={() => choose(opt)}
-                    className={`btn-tactile w-full rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition disabled:opacity-80 sm:py-3 sm:text-base ${style}`}
+                    className={`btn-tactile w-full rounded-xl border px-4 py-3.5 text-center text-base font-semibold transition disabled:opacity-80 sm:text-lg ${style}`}
                   >
                     {opt}
                   </button>
@@ -360,7 +360,7 @@ export default function RaceRosco({
               type="button"
               onClick={pass}
               disabled={Boolean(feedback) || ended}
-              className="btn-tactile mt-1.5 w-full rounded-full border border-outline-variant/50 py-2.5 text-sm font-bold disabled:opacity-40"
+              className="btn-tactile mt-3 w-full rounded-full bg-error py-3.5 text-base font-bold text-white shadow-soft transition hover:bg-error/90 disabled:opacity-40"
             >
               Pas
             </button>
