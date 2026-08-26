@@ -91,13 +91,24 @@ export default function StudyScopePicker() {
         total: p?.total ?? g.count,
       };
     });
-    // Çalışılan (seçili) ilk · bitmemişler · bitenler en sonda
+    // Seçili → ondan sonrakiler (döngüsel) → bitenler en sonda
+    const byIndex = [...items].sort((a, b) => a.index - b.index);
+    const n = byIndex.length;
+    const selPos = Math.max(
+      0,
+      byIndex.findIndex((g) => g.index === selectedGroupIndex)
+    );
+    const wrapKey = (index: number) => {
+      const pos = byIndex.findIndex((g) => g.index === index);
+      if (pos < 0 || n === 0) return 0;
+      return (pos - selPos + n) % n;
+    };
     return [...items].sort((a, b) => {
       const aSel = a.index === selectedGroupIndex ? 0 : 1;
       const bSel = b.index === selectedGroupIndex ? 0 : 1;
       if (aSel !== bSel) return aSel - bSel;
       if (a.complete !== b.complete) return a.complete ? 1 : -1;
-      return a.index - b.index;
+      return wrapKey(a.index) - wrapKey(b.index);
     });
   }, [groups, groupProgress, selectedGroupIndex]);
 
