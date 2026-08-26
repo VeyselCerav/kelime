@@ -91,24 +91,19 @@ export default function StudyScopePicker() {
         total: p?.total ?? g.count,
       };
     });
-    // Seçili → ondan sonrakiler (döngüsel) → bitenler en sonda
+    // Sıra: seçili → 35 → 36… → başa dön (bitenler yerinde kalır, yeşil görünür)
     const byIndex = [...items].sort((a, b) => a.index - b.index);
     const n = byIndex.length;
-    const selPos = Math.max(
-      0,
-      byIndex.findIndex((g) => g.index === selectedGroupIndex)
-    );
-    const wrapKey = (index: number) => {
-      const pos = byIndex.findIndex((g) => g.index === index);
-      if (pos < 0 || n === 0) return 0;
-      return (pos - selPos + n) % n;
-    };
+    const sel = Number(selectedGroupIndex);
+    let selPos = byIndex.findIndex((g) => Number(g.index) === sel);
+    if (selPos < 0) selPos = 0;
     return [...items].sort((a, b) => {
-      const aSel = a.index === selectedGroupIndex ? 0 : 1;
-      const bSel = b.index === selectedGroupIndex ? 0 : 1;
-      if (aSel !== bSel) return aSel - bSel;
-      if (a.complete !== b.complete) return a.complete ? 1 : -1;
-      return wrapKey(a.index) - wrapKey(b.index);
+      if (n === 0) return 0;
+      const posA = byIndex.findIndex((g) => g.index === a.index);
+      const posB = byIndex.findIndex((g) => g.index === b.index);
+      const keyA = (posA - selPos + n) % n;
+      const keyB = (posB - selPos + n) % n;
+      return keyA - keyB;
     });
   }, [groups, groupProgress, selectedGroupIndex]);
 
