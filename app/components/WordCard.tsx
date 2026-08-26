@@ -19,6 +19,39 @@ interface WordCardProps {
   onProgressSaved?: () => void;
   isFavorite?: boolean;
   onFavoriteChange?: (wordId: number, favorited: boolean) => void;
+  /** Web Speech ile İngilizce telaffuz (yalnızca kartlar / favoriler) */
+  showPronounce?: boolean;
+}
+
+function speakEnglish(text: string) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    return false;
+  }
+  window.speechSynthesis.cancel();
+
+  const speak = () => {
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'en-US';
+    utter.rate = 0.9;
+    const voices = window.speechSynthesis.getVoices();
+    const en =
+      voices.find((v) => v.lang === 'en-US') ||
+      voices.find((v) => v.lang.startsWith('en'));
+    if (en) utter.voice = en;
+    window.speechSynthesis.speak(utter);
+  };
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) {
+    window.speechSynthesis.addEventListener('voiceschanged', speak, {
+      once: true,
+    });
+    // iOS bazen voiceschanged vermez; yine de dene
+    speak();
+  } else {
+    speak();
+  }
+  return true;
 }
 
 export default function WordCard({
@@ -30,12 +63,14 @@ export default function WordCard({
   onProgressSaved,
   isFavorite = false,
   onFavoriteChange,
+  showPronounce = false,
 }: WordCardProps) {
   const { data: session } = useSession();
   const [isFlipped, setIsFlipped] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
   const [favorite, setFavorite] = useState(isFavorite);
+  const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState('');
   const [offsetX, setOffsetX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -78,6 +113,10 @@ export default function WordCard({
     setError('');
     setIsDragging(false);
     setFavorite(isFavorite);
+    setSpeaking(false);
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     offsetRef.current = 0;
     movedRef.current = false;
     axisRef.current = 'none';
@@ -85,6 +124,26 @@ export default function WordCard({
     pointerIdRef.current = null;
     exitDirRef.current = null;
   }, [wordId, isFavorite]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const playPronounce = () => {
+    if (!showPronounce) return;
+    setError('');
+    const ok = speakEnglish(english);
+    if (!ok) {
+      setError('Bu cihazda sesli okuma desteklenmiyor');
+      return;
+    }
+    setSpeaking(true);
+    window.setTimeout(() => setSpeaking(false), 1200);
+  };
 
   const toggleFavorite = async () => {
     if (!session) {
@@ -302,6 +361,7 @@ export default function WordCard({
 
       <p className="mb-3 px-2 text-center text-xs font-medium text-on-surface-variant">
         Sola: Ezberleyemedim · Sağa: Ezberledim · Dokun: çevir
+        {showPronounce ? ' · Dinle: telaffuz' : ''}
       </p>
 
       <div
@@ -380,7 +440,20 @@ export default function WordCard({
         </div>
       </div>
 
-      <div className="mt-5 w-full max-w-md sm:max-w-lg">
+      <div className="mt-5 flex w-full max-w-md flex-col gap-2 sm:max-w-lg">
+        {showPronounce && (
+          <button
+            type="button"
+            disabled={isMarking || !!exitDir}
+            onClick={playPronounce}
+            className="btn-tactile flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary-container/20 py-3.5 text-sm font-bold text-primary disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[22px]">
+              volume_up
+            </span>
+            {speaking ? 'Okunuyor…' : 'Telaffuzu dinle'}
+          </button>
+        )}
         <button
           type="button"
           disabled={favoriting || isMarking || !!exitDir}

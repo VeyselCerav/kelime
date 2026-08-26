@@ -196,6 +196,7 @@ export default function FlashCardsClient() {
             void refreshBadges();
             if (mode !== 'practice') void refreshScope();
           }}
+          showPronounce
         />
       )}
     </div>

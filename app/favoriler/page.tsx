@@ -116,28 +116,54 @@ export default function FavorilerPage() {
           {words.map((w) => (
             <li
               key={w.id}
-              className="flex items-center justify-between rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-4 py-3"
+              className="flex items-center justify-between gap-2 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-4 py-3"
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="font-semibold text-primary">{w.english}</p>
                 <p className="truncate text-sm text-on-surface-variant">
                   {w.turkish}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  await fetch('/api/favorites', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ wordId: w.id }),
-                  });
-                  setWords((prev) => prev.filter((x) => x.id !== w.id));
-                }}
-                className="text-xs font-bold text-error"
-              >
-                Çıkar
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  aria-label={`${w.english} telaffuzunu dinle`}
+                  onClick={() => {
+                    if (typeof window === 'undefined' || !window.speechSynthesis) {
+                      return;
+                    }
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(w.english);
+                    utter.lang = 'en-US';
+                    utter.rate = 0.9;
+                    const voices = window.speechSynthesis.getVoices();
+                    const en =
+                      voices.find((v) => v.lang === 'en-US') ||
+                      voices.find((v) => v.lang.startsWith('en'));
+                    if (en) utter.voice = en;
+                    window.speechSynthesis.speak(utter);
+                  }}
+                  className="rounded-full p-2 text-primary"
+                >
+                  <span className="material-symbols-outlined text-[22px]">
+                    volume_up
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await fetch('/api/favorites', {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ wordId: w.id }),
+                    });
+                    setWords((prev) => prev.filter((x) => x.id !== w.id));
+                  }}
+                  className="text-xs font-bold text-error"
+                >
+                  Çıkar
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -162,6 +188,7 @@ export default function FavorilerPage() {
             setIndex((i) => (i + 1 < words.length ? i + 1 : 0))
           }
           onProgressSaved={() => void refreshBadges()}
+          showPronounce
         />
       ) : null}
     </div>
