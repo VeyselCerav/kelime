@@ -120,10 +120,17 @@ export default function ProfilePage() {
       </p>
       <Link
         href="/stats"
-        className="btn-tactile mb-8 inline-flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary-container/20 px-4 py-2.5 text-sm font-bold text-primary"
+        className="btn-tactile mb-3 mr-2 inline-flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary-container/20 px-4 py-2.5 text-sm font-bold text-primary"
       >
         <span className="material-symbols-outlined text-[20px]">query_stats</span>
         İstatistikler
+      </Link>
+      <Link
+        href="/favoriler"
+        className="btn-tactile mb-8 inline-flex items-center gap-2 rounded-2xl border border-secondary/20 bg-secondary-container/30 px-4 py-2.5 text-sm font-bold text-on-secondary-container"
+      >
+        <span className="material-symbols-outlined text-[20px]">star</span>
+        Favorilerim
       </Link>
 
       {/* İlerleme Kartları */}

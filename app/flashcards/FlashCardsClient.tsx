@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import WordCard from '../components/WordCard';
@@ -25,11 +26,31 @@ export default function FlashCardsClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [scope, setScope] = useState<ScopeProgressView | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const { data: session } = useSession();
-  const { selectedModuleId, selectedGroup, selectedGroupIndex, unlearnedOnly } = useModule();
+  const { selectedModuleId, selectedGroup, selectedGroupIndex, unlearnedOnly } =
+    useModule();
   const { refreshBadges } = useBadgeContext();
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
+
+  const loadFavorites = useCallback(async () => {
+    if (!session) {
+      setFavoriteIds(new Set());
+      return;
+    }
+    try {
+      const res = await fetch('/api/favorites', {
+        cache: 'no-store',
+        credentials: 'include',
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setFavoriteIds(new Set(Array.isArray(data.wordIds) ? data.wordIds : []));
+    } catch {
+      /* ignore */
+    }
+  }, [session]);
 
   const refreshScope = useCallback(async () => {
     if (!selectedModuleId || !selectedGroupIndex || !session) return;
@@ -52,6 +73,10 @@ export default function FlashCardsClient() {
       /* ignore */
     }
   }, [selectedModuleId, selectedGroupIndex, session]);
+
+  useEffect(() => {
+    void loadFavorites();
+  }, [loadFavorites]);
 
   useEffect(() => {
     if (mode === 'practice') {
@@ -104,25 +129,34 @@ export default function FlashCardsClient() {
         <ScopeProgressBar progress={scope} showModule />
       </div>
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="font-display text-xl font-bold text-on-surface">
           Kelime Kartları
         </h1>
-        {words.length > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-container-highest">
-              <div
-                className="h-full bg-primary-container transition-all duration-500"
-                style={{
-                  width: `${((currentWordIndex + 1) / words.length) * 100}%`,
-                }}
-              />
+        <div className="flex items-center gap-3">
+          <Link
+            href="/favoriler"
+            className="flex items-center gap-1 text-xs font-bold text-secondary"
+          >
+            <span className="material-symbols-outlined text-[18px]">star</span>
+            Favorilerim
+          </Link>
+          {words.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-container-highest">
+                <div
+                  className="h-full bg-primary-container transition-all duration-500"
+                  style={{
+                    width: `${((currentWordIndex + 1) / words.length) * 100}%`,
+                  }}
+                />
+              </div>
+              <span className="text-xs font-bold text-on-surface-variant">
+                {currentWordIndex + 1}/{words.length}
+              </span>
             </div>
-            <span className="text-xs font-bold text-on-surface-variant">
-              {currentWordIndex + 1}/{words.length}
-            </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -141,6 +175,15 @@ export default function FlashCardsClient() {
           turkish={current.turkish}
           wordId={Number(current.id)}
           isAuthenticated={!!session}
+          isFavorite={favoriteIds.has(Number(current.id))}
+          onFavoriteChange={(id, favorited) => {
+            setFavoriteIds((prev) => {
+              const next = new Set(prev);
+              if (favorited) next.add(id);
+              else next.delete(id);
+              return next;
+            });
+          }}
           progressLabel={
             mode === 'practice'
               ? 'Tekrar · Ezberleyemediklerim'

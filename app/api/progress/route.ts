@@ -4,6 +4,22 @@ import { prisma } from '@/lib/prisma';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { computeStreakFromDates, evaluateBadges } from '@/lib/badges';
 
+export const dynamic = 'force-dynamic';
+
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function dayKey(d: Date) {
+  const x = startOfDay(d);
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, '0');
+  const day = String(x.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -13,10 +29,11 @@ export async function GET() {
     }
 
     const userId = parseInt(session.user.id, 10);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = startOfDay(new Date());
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - 6);
 
-    const [learnedWordsCount, learnedRows] = await Promise.all([
+    const [learnedWordsCount, learnedRows, recentLearned] = await Promise.all([
       prisma.learnedWord.count({
         where: { userId, isLearned: true },
       }),
@@ -24,34 +41,46 @@ export async function GET() {
         where: { userId, isLearned: true },
         select: { updatedAt: true },
       }),
+      prisma.learnedWord.findMany({
+        where: {
+          userId,
+          isLearned: true,
+          updatedAt: { gte: weekStart },
+        },
+        include: {
+          word: {
+            select: { id: true, english: true, turkish: true, moduleId: true },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+      }),
     ]);
 
     const streak = computeStreakFromDates(learnedRows.map((r) => r.updatedAt));
     const badges = evaluateBadges(learnedWordsCount, streak);
 
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - 6);
+    const weeklyData = Array(7).fill(0) as number[];
+    const learnedThisWeek = recentLearned.map((r) => ({
+      wordId: r.word.id,
+      english: r.word.english,
+      turkish: r.word.turkish,
+      moduleId: r.word.moduleId,
+      updatedAt: r.updatedAt.toISOString(),
+      day: dayKey(r.updatedAt),
+    }));
 
-    const weeklyProgress = await prisma.learnedWord.groupBy({
-      by: ['updatedAt'],
-      where: {
-        userId,
-        isLearned: true,
-        updatedAt: { gte: weekStart },
-      },
-      _count: { id: true },
-    });
-
-    const weeklyData = Array(7).fill(0);
-    weeklyProgress.forEach((day) => {
+    for (const row of recentLearned) {
       const dayIndex = Math.floor(
-        (new Date(day.updatedAt).getTime() - weekStart.getTime()) /
+        (startOfDay(row.updatedAt).getTime() - weekStart.getTime()) /
           (1000 * 60 * 60 * 24)
       );
       if (dayIndex >= 0 && dayIndex < 7) {
-        weeklyData[dayIndex] = day._count.id;
+        weeklyData[dayIndex] += 1;
       }
-    });
+    }
+
+    const todayKey = dayKey(today);
+    const learnedToday = learnedThisWeek.filter((w) => w.day === todayKey);
 
     return NextResponse.json({
       totalWords: learnedWordsCount,
@@ -70,6 +99,8 @@ export async function GET() {
         accent: b.accent,
       })),
       weeklyData,
+      learnedToday,
+      learnedThisWeek,
     });
   } catch (error) {
     console.error('Progress error:', error);

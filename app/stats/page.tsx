@@ -22,21 +22,45 @@ interface RaceRecent {
   createdAt: string;
 }
 
+interface LearnedWordRow {
+  wordId: number;
+  english: string;
+  turkish: string;
+  moduleId: number;
+  updatedAt: string;
+  day: string;
+}
+
+function formatDayTitle(day: string) {
+  const d = new Date(`${day}T12:00:00`);
+  return d.toLocaleDateString('tr-TR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
 export default function StatsPage() {
   const { data: session } = useSession();
   const { modules, selectedModule } = useModule();
   const { badges, learnedCount, streak } = useBadgeContext();
   const [weeklyData, setWeeklyData] = useState<number[]>(Array(7).fill(0));
+  const [learnedToday, setLearnedToday] = useState<LearnedWordRow[]>([]);
+  const [learnedThisWeek, setLearnedThisWeek] = useState<LearnedWordRow[]>([]);
   const [raceWins, setRaceWins] = useState(0);
   const [racePoints, setRacePoints] = useState(0);
   const [raceRecent, setRaceRecent] = useState<RaceRecent[]>([]);
 
   useEffect(() => {
     if (!session) return;
-    fetch('/api/progress')
+    fetch('/api/progress', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data.weeklyData)) setWeeklyData(data.weeklyData);
+        if (Array.isArray(data.learnedToday)) setLearnedToday(data.learnedToday);
+        if (Array.isArray(data.learnedThisWeek)) {
+          setLearnedThisWeek(data.learnedThisWeek);
+        }
       })
       .catch(console.error);
 
@@ -55,11 +79,32 @@ export default function StatsPage() {
   const streakBadges = badges.filter((b) => b.type === 'streak');
   const earnedCount = badges.filter((b) => b.earned).length;
 
+  const weekByDay = learnedThisWeek.reduce<Record<string, LearnedWordRow[]>>(
+    (acc, row) => {
+      if (!acc[row.day]) acc[row.day] = [];
+      acc[row.day].push(row);
+      return acc;
+    },
+    {}
+  );
+  const weekDays = Object.keys(weekByDay).sort((a, b) => (a < b ? 1 : -1));
+
   return (
     <div className="app-shell space-y-8 py-4">
-      <h1 className="font-display text-2xl font-bold text-on-surface">
-        İstatistikler
-      </h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-bold text-on-surface">
+          İstatistikler
+        </h1>
+        {session && (
+          <Link
+            href="/favoriler"
+            className="flex items-center gap-1 text-sm font-bold text-secondary"
+          >
+            <span className="material-symbols-outlined text-[20px]">star</span>
+            Favoriler
+          </Link>
+        )}
+      </div>
 
       {!session ? (
         <div className="rounded-card bg-cream p-6 text-center shadow-organic">
@@ -78,7 +123,7 @@ export default function StatsPage() {
           <section className="grid grid-cols-1 gap-4 md:grid-cols-12">
             <div className="relative overflow-hidden rounded-3xl bg-cream p-6 shadow-organic md:col-span-7">
               <p className="mb-2 flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                <span className="material-symbols-outlined text-tertiary text-base">
+                <span className="material-symbols-outlined text-base text-tertiary">
                   auto_stories
                 </span>
                 Yolculuğun
@@ -92,7 +137,8 @@ export default function StatsPage() {
                 </span>
               </div>
               <p className="mt-2 text-sm text-on-surface-variant">
-                {earnedCount}/{badges.length || WORD_BADGES.length + STREAK_BADGES.length} rozet
+                {earnedCount}/
+                {badges.length || WORD_BADGES.length + STREAK_BADGES.length} rozet
               </p>
               <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
                 <div
@@ -128,6 +174,33 @@ export default function StatsPage() {
           </section>
 
           <section className="grid grid-cols-2 gap-3">
+            <Link
+              href="/tekrar?scope=daily"
+              className="btn-tactile rounded-3xl bg-primary p-5 text-on-primary shadow-organic"
+            >
+              <span className="material-symbols-outlined text-2xl">today</span>
+              <p className="mt-2 font-display text-lg font-bold">Günlük tekrar</p>
+              <p className="mt-1 text-xs text-on-primary/80">
+                {learnedToday.length} kelime
+              </p>
+            </Link>
+            <Link
+              href="/tekrar?scope=weekly"
+              className="btn-tactile rounded-3xl bg-secondary-container p-5 text-on-secondary-container shadow-organic"
+            >
+              <span className="material-symbols-outlined text-2xl">
+                date_range
+              </span>
+              <p className="mt-2 font-display text-lg font-bold">
+                Haftalık tekrar
+              </p>
+              <p className="mt-1 text-xs opacity-80">
+                {learnedThisWeek.length} kelime
+              </p>
+            </Link>
+          </section>
+
+          <section className="grid grid-cols-2 gap-3">
             <div className="rounded-3xl bg-cream p-5 shadow-organic">
               <p className="text-[11px] font-bold uppercase tracking-wider text-outline">
                 Kazanılan yarış
@@ -157,7 +230,10 @@ export default function StatsPage() {
               {DAY_LABELS.map((label, i) => {
                 const h = Math.max(8, (weeklyData[i] / maxBar) * 100);
                 return (
-                  <div key={label} className="flex flex-1 flex-col items-center gap-2">
+                  <div
+                    key={label}
+                    className="flex flex-1 flex-col items-center gap-2"
+                  >
                     <div
                       className="chart-bar w-8 rounded-t-xl bg-primary-container md:w-12"
                       style={{ height: `${h}%` }}
@@ -169,6 +245,63 @@ export default function StatsPage() {
                 );
               })}
             </div>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-display text-xl font-semibold text-on-surface">
+              Bugün ezberlenenler
+            </h2>
+            {learnedToday.length === 0 ? (
+              <p className="rounded-card bg-cream p-4 text-sm text-on-surface-variant shadow-organic">
+                Bugün henüz kelime ezberlemedin.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {learnedToday.map((w) => (
+                  <li
+                    key={`${w.wordId}-${w.updatedAt}`}
+                    className="rounded-2xl border border-outline-variant/30 bg-cream px-4 py-3 shadow-organic"
+                  >
+                    <p className="font-semibold text-primary">{w.english}</p>
+                    <p className="text-sm text-on-surface-variant">{w.turkish}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-display text-xl font-semibold text-on-surface">
+              Bu hafta ezberlenenler
+            </h2>
+            {weekDays.length === 0 ? (
+              <p className="rounded-card bg-cream p-4 text-sm text-on-surface-variant shadow-organic">
+                Son 7 günde ezber kaydı yok.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {weekDays.map((day) => (
+                  <div key={day}>
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-outline">
+                      {formatDayTitle(day)} · {weekByDay[day].length}
+                    </p>
+                    <ul className="space-y-2">
+                      {weekByDay[day].map((w) => (
+                        <li
+                          key={`${day}-${w.wordId}-${w.updatedAt}`}
+                          className="rounded-2xl border border-outline-variant/30 bg-cream px-4 py-3 shadow-organic"
+                        >
+                          <p className="font-semibold text-primary">{w.english}</p>
+                          <p className="text-sm text-on-surface-variant">
+                            {w.turkish}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="space-y-3">
@@ -211,7 +344,10 @@ export default function StatsPage() {
               <h2 className="font-display text-xl font-semibold text-on-surface">
                 Son yarışlar
               </h2>
-              <Link href="/yaris" className="text-xs font-bold text-primary hover:underline">
+              <Link
+                href="/yaris"
+                className="text-xs font-bold text-primary hover:underline"
+              >
                 Yarışa gir
               </Link>
             </div>
@@ -249,7 +385,11 @@ export default function StatsPage() {
                             : 'bg-error/10 text-error'
                       }`}
                     >
-                      {row.draw ? 'Berabere' : row.won ? 'Galibiyet' : 'Mağlubiyet'}
+                      {row.draw
+                        ? 'Berabere'
+                        : row.won
+                          ? 'Galibiyet'
+                          : 'Mağlubiyet'}
                     </div>
                   </div>
                 ))}
@@ -316,7 +456,9 @@ export default function StatsPage() {
                   <div className="mb-2 flex items-center gap-2">
                     <span
                       className={`material-symbols-outlined ${
-                        m.slug === 'en-sik-cikan' ? 'text-secondary' : 'text-primary'
+                        m.slug === 'en-sik-cikan'
+                          ? 'text-secondary'
+                          : 'text-primary'
                       }`}
                     >
                       {m.slug === 'en-sik-cikan'
@@ -333,7 +475,9 @@ export default function StatsPage() {
                     {m.wordCount} kelime
                   </p>
                   {selectedModule?.id === m.id && (
-                    <p className="mt-1 text-xs font-bold text-outline">Seçili modül</p>
+                    <p className="mt-1 text-xs font-bold text-outline">
+                      Seçili modül
+                    </p>
                   )}
                 </div>
               ))}

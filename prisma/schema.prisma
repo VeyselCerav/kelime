@@ -20,6 +20,7 @@ model User {
   updatedAt         DateTime        @updatedAt
   learnedWords      LearnedWord[]
   unlearnedWords    UnlearnedWord[]
+  favoriteWords     FavoriteWord[]
   dailyGoals        DailyGoal[]
   examResults       ExamResult[]
   racePresence      RacePresence?
@@ -48,9 +49,22 @@ model Word {
   createdAt   DateTime        @default(now())
   learnedBy   LearnedWord[]
   unlearnedBy UnlearnedWord[]
+  favoritedBy FavoriteWord[]
 
   @@unique([moduleId, english])
   @@index([moduleId, category])
+}
+
+model FavoriteWord {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  wordId    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word      Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+  @@index([userId, createdAt])
 }
 
 model UnlearnedWord {

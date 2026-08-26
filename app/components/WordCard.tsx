@@ -17,6 +17,8 @@ interface WordCardProps {
   onActionComplete?: () => void;
   progressLabel?: string;
   onProgressSaved?: () => void;
+  isFavorite?: boolean;
+  onFavoriteChange?: (wordId: number, favorited: boolean) => void;
 }
 
 export default function WordCard({
@@ -26,10 +28,14 @@ export default function WordCard({
   onActionComplete,
   progressLabel,
   onProgressSaved,
+  isFavorite = false,
+  onFavoriteChange,
 }: WordCardProps) {
   const { data: session } = useSession();
   const [isFlipped, setIsFlipped] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
+  const [favoriting, setFavoriting] = useState(false);
+  const [favorite, setFavorite] = useState(isFavorite);
   const [error, setError] = useState('');
   const [offsetX, setOffsetX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -71,13 +77,43 @@ export default function WordCard({
     setExitDir(null);
     setError('');
     setIsDragging(false);
+    setFavorite(isFavorite);
     offsetRef.current = 0;
     movedRef.current = false;
     axisRef.current = 'none';
     draggingRef.current = false;
     pointerIdRef.current = null;
     exitDirRef.current = null;
-  }, [wordId]);
+  }, [wordId, isFavorite]);
+
+  const toggleFavorite = async () => {
+    if (!session) {
+      setError('Favori için oturum açmanız gerekiyor');
+      return;
+    }
+    if (favoriting || isMarking || exitDir) return;
+    setFavoriting(true);
+    setError('');
+    const next = !favorite;
+    try {
+      const res = await fetch('/api/favorites', {
+        method: next ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wordId }),
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Favori güncellenemedi');
+      }
+      setFavorite(next);
+      onFavoriteChange?.(wordId, next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Hata oluştu');
+    } finally {
+      setFavoriting(false);
+    }
+  };
 
   const resetCard = () => {
     offsetRef.current = 0;
@@ -344,24 +380,30 @@ export default function WordCard({
         </div>
       </div>
 
-      <div className="mt-5 grid w-full max-w-md grid-cols-2 gap-3 sm:max-w-lg">
+      <div className="mt-5 w-full max-w-md sm:max-w-lg">
         <button
           type="button"
-          disabled={isMarking || !!exitDir}
-          onClick={() => commitSwipe('left')}
-          className="btn-tactile flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-error/30 bg-error/10 py-3.5 text-sm font-bold text-error disabled:opacity-50"
+          disabled={favoriting || isMarking || !!exitDir}
+          onClick={() => void toggleFavorite()}
+          className={`btn-tactile flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border py-3.5 text-sm font-bold disabled:opacity-50 ${
+            favorite
+              ? 'border-secondary bg-secondary-container text-on-secondary-container'
+              : 'border-outline-variant/50 bg-surface-container-lowest text-on-surface'
+          }`}
         >
-          <span className="material-symbols-outlined text-[20px]">close</span>
-          Ezberleyemedim
-        </button>
-        <button
-          type="button"
-          disabled={isMarking || !!exitDir}
-          onClick={() => commitSwipe('right')}
-          className="btn-tactile flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-tertiary/30 bg-tertiary/10 py-3.5 text-sm font-bold text-tertiary disabled:opacity-50"
-        >
-          <span className="material-symbols-outlined text-[20px]">check</span>
-          Ezberledim
+          <span
+            className="material-symbols-outlined text-[22px]"
+            style={
+              favorite ? { fontVariationSettings: "'FILL' 1" } : undefined
+            }
+          >
+            star
+          </span>
+          {favoriting
+            ? 'Kaydediliyor…'
+            : favorite
+              ? 'Favoriden çıkar'
+              : 'Favoriye Ekle'}
         </button>
       </div>
 
