@@ -69,31 +69,49 @@ function toItems(questions: RoscoSource[]): Item[] {
     const english =
       q.english || q.answer || q.question?.match(/"([^"]+)"/)?.[1] || '';
     const turkish = q.turkish || '';
-    const raw = q.letter || english.trim().match(/[A-Za-z]/)?.[0] || '?';
+    const letter = (
+      q.letter ||
+      english.trim().match(/[A-Za-z]/)?.[0] ||
+      '?'
+    ).toUpperCase();
+    const correctNorm = normalize(english);
+
     let options = Array.isArray(q.options)
       ? q.options.filter((o) => typeof o === 'string' && o.trim())
       : [];
-    // Eski maçlarda şıklar Türkçe olabilir; doğru İngilizce cevabı garanti et
-    if (english && !options.some((o) => normalize(o) === normalize(english))) {
-      options = [...options.filter((o) => normalize(o) !== normalize(english)), english];
+
+    // Aynı harf + tek doğru
+    options = options.filter((o) => {
+      const first = o.trim().match(/[A-Za-z]/)?.[0];
+      return first && first.toUpperCase() === letter;
+    });
+
+    const unique: string[] = [];
+    const seen = new Set<string>();
+    for (const opt of options) {
+      const n = normalize(opt);
+      if (!n || seen.has(n)) continue;
+      seen.add(n);
+      unique.push(opt.trim());
     }
-    options = [...new Set(options.map((o) => o.trim()).filter(Boolean))];
-    if (options.length > 3) {
-      const correct = options.find((o) => normalize(o) === normalize(english));
-      const rest = options.filter((o) => o !== correct);
-      options = shuffleLocal([
-        ...(correct ? [correct] : []),
-        ...shuffleLocal(rest).slice(0, 2),
-      ]);
-    } else {
-      options = shuffleLocal(options).slice(0, 3);
+
+    let correct = unique.find((o) => normalize(o) === correctNorm);
+    if (!correct && english) {
+      correct = english.trim();
+      unique.unshift(correct);
     }
+    const wrongs = unique.filter((o) => normalize(o) !== correctNorm);
+    const finalOpts = shuffleLocal([
+      correct!,
+      ...shuffleLocal(wrongs).slice(0, 2),
+    ]).filter(Boolean);
+
     return {
       wordId: q.wordId || q.id || i,
       english,
       turkish,
-      letter: raw.toUpperCase(),
-      options,
+      letter,
+      options: finalOpts.slice(0, 3),
     };
   });
 }
@@ -213,15 +231,36 @@ export default function RaceRosco({
   const remainPct = Math.max(0, (remainMs / RACE_TIMER_MS) * 100);
 
   return (
-    <div className="space-y-3">
+    <div className="mx-auto flex w-full max-w-md flex-col gap-2">
       {subtitle && (
-        <p className="text-center text-sm font-semibold text-secondary">
+        <p className="text-center text-xs font-semibold text-secondary">
           {subtitle}
         </p>
       )}
 
-      <div className="relative mx-auto aspect-square w-full max-w-[340px]">
-        <div className="absolute left-1/2 top-1/2 z-[1] h-[44%] w-[44%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-4 border-yellow-400 bg-yellow-400 shadow-soft">
+      <div className="flex items-center justify-between gap-2 px-1">
+        <p
+          className={`font-display text-xl font-bold tabular-nums ${
+            urgent ? 'text-error' : 'text-on-surface'
+          }`}
+        >
+          {formatRemain(remainMs)}
+        </p>
+        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-container">
+          <div
+            className={`h-full rounded-full ${
+              urgent ? 'bg-error' : 'bg-primary'
+            }`}
+            style={{ width: `${remainPct}%` }}
+          />
+        </div>
+        <p className="shrink-0 text-xs font-bold text-outline">
+          {statuses.filter((s) => s === 'correct').length}/{items.length}
+        </p>
+      </div>
+
+      <div className="relative mx-auto aspect-square w-[min(100%,220px)] sm:w-[min(100%,260px)]">
+        <div className="absolute left-1/2 top-1/2 z-[1] h-[42%] w-[42%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-[3px] border-yellow-400 bg-yellow-400 shadow-soft">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
@@ -240,7 +279,7 @@ export default function RaceRosco({
           return (
             <span
               key={`${letterItem.wordId}-${i}`}
-              className={`absolute flex h-8 w-8 items-center justify-center rounded-full text-sm font-black transition-colors ${
+              className={`absolute flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-colors sm:h-8 sm:w-8 sm:text-sm ${
                 active
                   ? 'rosco-active bg-yellow-300 text-on-surface'
                   : st === 'correct'
@@ -263,53 +302,32 @@ export default function RaceRosco({
         })}
       </div>
 
-      <div className="rounded-card border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-soft">
-        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-surface-container">
-          <div
-            className={`h-full rounded-full ${
-              urgent ? 'bg-error' : 'bg-primary'
-            }`}
-            style={{ width: `${remainPct}%` }}
-          />
-        </div>
-        <div className="mb-3 flex items-center justify-between">
-          <p
-            className={`font-display text-2xl font-bold tabular-nums ${
-              urgent ? 'text-error' : 'text-on-surface'
-            }`}
-          >
-            {formatRemain(remainMs)}
-          </p>
-          <p className="text-xs font-bold text-outline">
-            {statuses.filter((s) => s === 'correct').length}/{items.length} doğru
-          </p>
-        </div>
-
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-3 shadow-soft">
         {item && (
           <>
-            <p className="text-center text-[11px] font-bold uppercase tracking-wider text-outline">
+            <p className="text-center text-[10px] font-bold uppercase tracking-wider text-outline">
               {item.letter} ile başlar
             </p>
-            <p className="mt-1 text-center font-display text-lg font-semibold leading-snug text-on-surface">
+            <p className="mt-0.5 text-center font-display text-base font-semibold leading-snug text-on-surface sm:text-lg">
               {item.turkish}
             </p>
             {feedback === 'ok' && (
-              <p className="mt-2 text-center text-sm font-bold text-primary">
+              <p className="mt-1 text-center text-sm font-bold text-primary">
                 Doğru! {item.english}
               </p>
             )}
             {feedback === 'bad' && (
-              <p className="mt-2 text-center text-sm font-bold text-error">
+              <p className="mt-1 text-center text-sm font-bold text-error">
                 Yanlış · doğrusu: {item.english}
               </p>
             )}
             {ended && !feedback && (
-              <p className="mt-2 text-center text-sm font-bold text-secondary">
+              <p className="mt-1 text-center text-sm font-bold text-secondary">
                 Tur bitti
               </p>
             )}
 
-            <div className="mt-3 grid gap-2">
+            <div className="mt-2 grid gap-1.5">
               {item.options.map((opt) => {
                 const isPicked = picked === opt;
                 const isCorrectOpt =
@@ -330,7 +348,7 @@ export default function RaceRosco({
                     type="button"
                     disabled={Boolean(feedback) || ended}
                     onClick={() => choose(opt)}
-                    className={`btn-tactile w-full rounded-2xl border px-4 py-3.5 text-center text-base font-semibold transition disabled:opacity-80 ${style}`}
+                    className={`btn-tactile w-full rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition disabled:opacity-80 sm:py-3 sm:text-base ${style}`}
                   >
                     {opt}
                   </button>
@@ -342,7 +360,7 @@ export default function RaceRosco({
               type="button"
               onClick={pass}
               disabled={Boolean(feedback) || ended}
-              className="btn-tactile mt-2 w-full rounded-full border border-outline-variant/50 py-3 text-sm font-bold disabled:opacity-40"
+              className="btn-tactile mt-1.5 w-full rounded-full border border-outline-variant/50 py-2.5 text-sm font-bold disabled:opacity-40"
             >
               Pas
             </button>
