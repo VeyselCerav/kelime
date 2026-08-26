@@ -97,14 +97,20 @@ export default function StudyScopePicker() {
     });
   }, [groups, groupProgress]);
 
+  // Sadece kullanıcı grup değiştirdiğinde yatay kaydır; ilerleme güncellemesi sayfayı kaydırmaz
+  const prevGroupIndexRef = useRef<number | null>(null);
   useEffect(() => {
+    if (prevGroupIndexRef.current === selectedGroupIndex) return;
+    prevGroupIndexRef.current = selectedGroupIndex;
+
+    const scroller = scrollerRef.current;
     const el = chipRefs.current.get(selectedGroupIndex);
-    el?.scrollIntoView({
-      behavior: 'smooth',
-      inline: 'center',
-      block: 'nearest',
-    });
-  }, [selectedGroupIndex, sortedChips]);
+    if (!scroller || !el) return;
+
+    const left =
+      el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
+    scroller.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+  }, [selectedGroupIndex]);
 
   if (isLoading) {
     return <div className="h-24 animate-pulse rounded-2xl bg-surface-container" />;
