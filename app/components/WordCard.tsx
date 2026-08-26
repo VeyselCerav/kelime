@@ -361,123 +361,132 @@ export default function WordCard({
 
       <p className="mb-3 px-2 text-center text-xs font-medium text-on-surface-variant">
         Sola: Ezberleyemedim · Sağa: Ezberledim · Dokun: çevir
-        {showPronounce ? ' · Dinle: telaffuz' : ''}
       </p>
 
-      <div
-        className="perspective-1000 relative mx-auto aspect-[3/4] w-full max-w-md select-none sm:max-w-lg"
-        style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
-      >
+      <div className="relative mx-auto w-full max-w-md sm:max-w-lg">
         <div
-          className="pointer-events-none absolute inset-y-8 left-2 z-10 flex items-center"
-          style={{ opacity: unlearnedHint }}
-          aria-hidden
+          className="perspective-1000 relative z-0 aspect-[3/4] w-full select-none"
+          style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
         >
-          <span className="rounded-full bg-error/90 px-3 py-1.5 text-[11px] font-bold text-white shadow-soft">
-            Ezberleyemedim
-          </span>
-        </div>
-        <div
-          className="pointer-events-none absolute inset-y-8 right-2 z-10 flex items-center"
-          style={{ opacity: learnedHint }}
-          aria-hidden
-        >
-          <span className="rounded-full bg-tertiary/90 px-3 py-1.5 text-[11px] font-bold text-white shadow-soft">
-            Ezberledim
-          </span>
-        </div>
-
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Kelime kartı. Kaydır veya dokunarak çevir."
-          className={`flashcard-inner paper-stack relative h-full w-full cursor-grab active:cursor-grabbing ${
-            isFlipped ? 'is-flipped' : ''
-          } ${isDragging || exitDir ? '' : 'transition-transform duration-200 ease-out'}`}
-          style={{
-            touchAction: 'none',
-            transform: isFlipped
-              ? `translate3d(${offsetX}px, 0, 0) rotate(${rotation}deg) rotateY(180deg)`
-              : `translate3d(${offsetX}px, 0, 0) rotate(${rotation}deg)`,
-            opacity: exitDir ? 0.35 : 1,
-            willChange: isDragging ? 'transform' : undefined,
-          }}
-          onPointerDown={onPointerDown}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setIsFlipped((f) => !f);
-            } else if (e.key === 'ArrowRight') {
-              e.preventDefault();
-              commitSwipe('right');
-            } else if (e.key === 'ArrowLeft') {
-              e.preventDefault();
-              commitSwipe('left');
-            }
-          }}
-        >
-          <div className="flashcard-face paper-texture flex flex-col items-center justify-center rounded-card border border-outline-variant p-6 shadow-soft">
-            <h1 className="mt-8 text-center font-display text-4xl font-bold italic text-primary sm:text-5xl">
-              {english}
-            </h1>
-            <div className="absolute bottom-4 flex items-center gap-1 text-on-surface-variant/50">
-              <span className="material-symbols-outlined text-[18px]">swipe</span>
-              <span className="text-xs font-bold">Kaydır veya dokun</span>
-            </div>
+          <div
+            className="pointer-events-none absolute inset-y-8 left-2 z-10 flex items-center"
+            style={{ opacity: unlearnedHint }}
+            aria-hidden
+          >
+            <span className="rounded-full bg-error/90 px-3 py-1.5 text-[11px] font-bold text-white shadow-soft">
+              Ezberleyemedim
+            </span>
+          </div>
+          <div
+            className="pointer-events-none absolute inset-y-8 right-2 z-10 flex items-center"
+            style={{ opacity: learnedHint }}
+            aria-hidden
+          >
+            <span className="rounded-full bg-tertiary/90 px-3 py-1.5 text-[11px] font-bold text-white shadow-soft">
+              Ezberledim
+            </span>
           </div>
 
-          <div className="flashcard-face flashcard-back paper-texture flex flex-col items-center justify-center rounded-card border border-outline-variant p-6 text-center shadow-soft">
-            <div className="mb-4 rounded-full border-2 border-primary-container px-4 py-1">
-              <span className="text-xs font-bold uppercase tracking-widest text-primary">
-                Anlam
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Kelime kartı. Kaydır veya dokunarak çevir."
+            className={`flashcard-inner paper-stack relative z-0 h-full w-full cursor-grab active:cursor-grabbing ${
+              isFlipped ? 'is-flipped' : ''
+            } ${isDragging || exitDir ? '' : 'transition-transform duration-200 ease-out'}`}
+            style={{
+              touchAction: 'none',
+              transform: isFlipped
+                ? `translate3d(${offsetX}px, 0, 0) rotate(${rotation}deg) rotateY(180deg)`
+                : `translate3d(${offsetX}px, 0, 0) rotate(${rotation}deg)`,
+              opacity: exitDir ? 0.35 : 1,
+              willChange: isDragging ? 'transform' : undefined,
+            }}
+            onPointerDown={onPointerDown}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIsFlipped((f) => !f);
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                commitSwipe('right');
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                commitSwipe('left');
+              }
+            }}
+          >
+            <div className="flashcard-face paper-texture flex flex-col items-center justify-center rounded-card border border-outline-variant p-6 shadow-soft">
+              <h1 className="mt-8 text-center font-display text-4xl font-bold italic text-primary sm:text-5xl">
+                {english}
+              </h1>
+              <div className="absolute bottom-4 flex items-center gap-1 text-on-surface-variant/50">
+                <span className="material-symbols-outlined text-[18px]">
+                  swipe
+                </span>
+                <span className="text-xs font-bold">Kaydır veya dokun</span>
+              </div>
+            </div>
+
+            <div className="flashcard-face flashcard-back paper-texture flex flex-col items-center justify-center rounded-card border border-outline-variant p-6 text-center shadow-soft">
+              <div className="mb-4 rounded-full border-2 border-primary-container px-4 py-1">
+                <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                  Anlam
+                </span>
+              </div>
+              <h2 className="mb-3 font-display text-2xl font-bold text-on-surface sm:text-3xl">
+                {turkish}
+              </h2>
+              <p className="max-w-[240px] text-sm italic text-secondary">
+                {english}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Kartın üstünde sabit ikon katmanı — swipe/flip ile hareket etmez */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-3 pt-3">
+          {showPronounce ? (
+            <button
+              type="button"
+              disabled={isMarking || !!exitDir}
+              aria-label="Telaffuzu dinle"
+              onClick={() => playPronounce()}
+              className={`pointer-events-auto btn-tactile flex h-12 w-12 items-center justify-center rounded-full border-2 bg-white shadow-soft disabled:opacity-50 ${
+                speaking
+                  ? 'border-primary text-primary'
+                  : 'border-outline-variant/50 text-primary'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[26px]">
+                volume_up
               </span>
-            </div>
-            <h2 className="mb-3 font-display text-2xl font-bold text-on-surface sm:text-3xl">
-              {turkish}
-            </h2>
-            <p className="max-w-[240px] text-sm italic text-secondary">{english}</p>
-          </div>
-        </div>
-      </div>
+            </button>
+          ) : (
+            <span className="h-12 w-12" aria-hidden />
+          )}
 
-      <div className="mt-5 flex w-full max-w-md flex-col gap-2 sm:max-w-lg">
-        {showPronounce && (
           <button
             type="button"
-            disabled={isMarking || !!exitDir}
-            onClick={playPronounce}
-            className="btn-tactile flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary-container/20 py-3.5 text-sm font-bold text-primary disabled:opacity-50"
+            disabled={favoriting || isMarking || !!exitDir}
+            aria-label={favorite ? 'Favoriden çıkar' : 'Favoriye ekle'}
+            onClick={() => void toggleFavorite()}
+            className={`pointer-events-auto btn-tactile flex h-12 w-12 items-center justify-center rounded-full border-2 bg-white shadow-soft disabled:opacity-50 ${
+              favorite
+                ? 'border-secondary text-secondary'
+                : 'border-outline-variant/50 text-on-surface-variant'
+            }`}
           >
-            <span className="material-symbols-outlined text-[22px]">
-              volume_up
+            <span
+              className="material-symbols-outlined text-[26px]"
+              style={
+                favorite ? { fontVariationSettings: "'FILL' 1" } : undefined
+              }
+            >
+              star
             </span>
-            {speaking ? 'Okunuyor…' : 'Telaffuzu dinle'}
           </button>
-        )}
-        <button
-          type="button"
-          disabled={favoriting || isMarking || !!exitDir}
-          onClick={() => void toggleFavorite()}
-          className={`btn-tactile flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border py-3.5 text-sm font-bold disabled:opacity-50 ${
-            favorite
-              ? 'border-secondary bg-secondary-container text-on-secondary-container'
-              : 'border-outline-variant/50 bg-surface-container-lowest text-on-surface'
-          }`}
-        >
-          <span
-            className="material-symbols-outlined text-[22px]"
-            style={
-              favorite ? { fontVariationSettings: "'FILL' 1" } : undefined
-            }
-          >
-            star
-          </span>
-          {favoriting
-            ? 'Kaydediliyor…'
-            : favorite
-              ? 'Favoriden çıkar'
-              : 'Favoriye Ekle'}
-        </button>
+        </div>
       </div>
 
       {isMarking && (
