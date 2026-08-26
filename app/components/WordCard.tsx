@@ -359,10 +359,6 @@ export default function WordCard({
         </p>
       )}
 
-      <p className="mb-3 px-2 text-center text-xs font-medium text-on-surface-variant">
-        Sola: Ezberleyemedim · Sağa: Ezberledim · Dokun: çevir
-      </p>
-
       <div className="relative mx-auto w-full max-w-md sm:max-w-lg">
         <div
           className="perspective-1000 relative z-0 aspect-[3/4] w-full select-none"

@@ -194,7 +194,10 @@ export default function FlashCardsClient() {
           onActionComplete={goNext}
           onProgressSaved={() => {
             void refreshBadges();
-            if (mode !== 'practice') void refreshScope();
+            if (mode !== 'practice') {
+              void refreshScope();
+              window.dispatchEvent(new Event('yds-scope-progress'));
+            }
           }}
           showPronounce
         />
