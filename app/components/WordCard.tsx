@@ -501,28 +501,8 @@ export default function WordCard({
           </div>
         </div>
 
-        {/* Kartın üstünde sabit ikon katmanı — swipe/flip ile hareket etmez */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-3 pt-3">
-          {showPronounce ? (
-            <button
-              type="button"
-              disabled={isMarking || !!exitDir}
-              aria-label="Telaffuzu dinle"
-              onClick={() => playPronounce()}
-              className={`pointer-events-auto btn-tactile flex h-12 w-12 items-center justify-center rounded-full border-2 bg-white shadow-soft disabled:opacity-50 ${
-                speaking
-                  ? 'border-primary text-primary'
-                  : 'border-outline-variant/50 text-primary'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[26px]">
-                volume_up
-              </span>
-            </button>
-          ) : (
-            <span className="h-12 w-12" aria-hidden />
-          )}
-
+        {/* Favori: sağ üst — Ses: sağ alt (swipe/flip ile hareket etmez) */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-end px-3 pt-3">
           <button
             type="button"
             disabled={favoriting || isMarking || !!exitDir}
@@ -544,6 +524,26 @@ export default function WordCard({
             </span>
           </button>
         </div>
+
+        {showPronounce && (
+          <div className="pointer-events-none absolute bottom-3 right-3 z-30">
+            <button
+              type="button"
+              disabled={isMarking || !!exitDir}
+              aria-label="Telaffuzu dinle"
+              onClick={() => playPronounce()}
+              className={`pointer-events-auto btn-tactile flex h-12 w-12 items-center justify-center rounded-full border-2 bg-white shadow-soft disabled:opacity-50 ${
+                speaking
+                  ? 'border-primary text-primary'
+                  : 'border-outline-variant/50 text-primary'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[26px]">
+                volume_up
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {isMarking && (
