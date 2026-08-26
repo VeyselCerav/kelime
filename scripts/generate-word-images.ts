@@ -150,7 +150,7 @@ async function fetchPollinationsImage(
   return { mimeType, base64: buf.toString('base64') };
 }
 
-let geminiImageDisabled = false;
+let geminiImageDisabled = hasFlag('no-gemini-image');
 
 async function generateImageBytes(
   apiKey: string,
