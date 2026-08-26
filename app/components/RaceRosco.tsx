@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const RACE_TIMER_MS = 120_000;
 
@@ -14,6 +14,7 @@ export type RoscoSource = {
   english?: string;
   turkish?: string;
   letter?: string;
+  options?: string[];
 };
 
 export type RoscoMiss = {
@@ -36,6 +37,7 @@ type Item = {
   english: string;
   turkish: string;
   letter: string;
+  options: string[];
 };
 
 type Props = {
@@ -45,19 +47,13 @@ type Props = {
   onComplete: (result: RoscoResult) => void;
 };
 
-function toItems(questions: RoscoSource[]): Item[] {
-  return questions.map((q, i) => {
-    const english =
-      q.english || q.question?.match(/"([^"]+)"/)?.[1] || '';
-    const turkish = q.turkish || q.answer || '';
-    const raw = q.letter || english.trim().match(/[A-Za-z]/)?.[0] || '?';
-    return {
-      wordId: q.wordId || q.id || i,
-      english,
-      turkish,
-      letter: raw.toUpperCase(),
-    };
-  });
+function shuffleLocal<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 function normalize(s: string) {
@@ -66,6 +62,40 @@ function normalize(s: string) {
     .toLowerCase()
     .replace(/['’]/g, '')
     .replace(/[^a-z0-9çğıöşü]+/gi, '');
+}
+
+function toItems(questions: RoscoSource[]): Item[] {
+  return questions.map((q, i) => {
+    const english =
+      q.english || q.answer || q.question?.match(/"([^"]+)"/)?.[1] || '';
+    const turkish = q.turkish || '';
+    const raw = q.letter || english.trim().match(/[A-Za-z]/)?.[0] || '?';
+    let options = Array.isArray(q.options)
+      ? q.options.filter((o) => typeof o === 'string' && o.trim())
+      : [];
+    // Eski maçlarda şıklar Türkçe olabilir; doğru İngilizce cevabı garanti et
+    if (english && !options.some((o) => normalize(o) === normalize(english))) {
+      options = [...options.filter((o) => normalize(o) !== normalize(english)), english];
+    }
+    options = [...new Set(options.map((o) => o.trim()).filter(Boolean))];
+    if (options.length > 3) {
+      const correct = options.find((o) => normalize(o) === normalize(english));
+      const rest = options.filter((o) => o !== correct);
+      options = shuffleLocal([
+        ...(correct ? [correct] : []),
+        ...shuffleLocal(rest).slice(0, 2),
+      ]);
+    } else {
+      options = shuffleLocal(options).slice(0, 3);
+    }
+    return {
+      wordId: q.wordId || q.id || i,
+      english,
+      turkish,
+      letter: raw.toUpperCase(),
+      options,
+    };
+  });
 }
 
 function formatRemain(ms: number) {
@@ -95,7 +125,7 @@ export default function RaceRosco({
     items.map(() => 'pending')
   );
   const [current, setCurrent] = useState(0);
-  const [input, setInput] = useState('');
+  const [picked, setPicked] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<null | 'ok' | 'bad'>(null);
   const [remainMs, setRemainMs] = useState(RACE_TIMER_MS);
   const [ended, setEnded] = useState(false);
@@ -103,7 +133,6 @@ export default function RaceRosco({
   const doneRef = useRef(false);
   const lockRef = useRef(false);
   const statusesRef = useRef(statuses);
-  const inputRef = useRef<HTMLInputElement>(null);
   statusesRef.current = statuses;
 
   const finish = (st = statusesRef.current) => {
@@ -144,10 +173,6 @@ export default function RaceRosco({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [current]);
-
   const item = items[current];
   const urgent = remainMs <= 15_000;
 
@@ -161,7 +186,7 @@ export default function RaceRosco({
 
     window.setTimeout(() => {
       setFeedback(null);
-      setInput('');
+      setPicked(null);
       const next = nextPlayable(current, nextStatuses);
       lockRef.current = false;
       if (next < 0) {
@@ -172,17 +197,15 @@ export default function RaceRosco({
     }, status === 'passed' ? 120 : 700);
   };
 
-  const submit = (e?: FormEvent) => {
-    e?.preventDefault();
-    if (lockRef.current || doneRef.current || !item) return;
-    const guess = normalize(input);
-    if (!guess) return;
-    const ok = guess === normalize(item.english);
+  const choose = (option: string) => {
+    if (lockRef.current || doneRef.current || !item || feedback) return;
+    setPicked(option);
+    const ok = normalize(option) === normalize(item.english);
     resolve(ok ? 'correct' : 'wrong');
   };
 
   const pass = () => {
-    if (lockRef.current || doneRef.current) return;
+    if (lockRef.current || doneRef.current || feedback) return;
     resolve('passed');
   };
 
@@ -231,9 +254,7 @@ export default function RaceRosco({
               style={{
                 left: `${left}%`,
                 top: `${top}%`,
-                transform: active
-                  ? undefined
-                  : 'translate(-50%, -50%)',
+                transform: active ? undefined : 'translate(-50%, -50%)',
               }}
             >
               {letterItem.letter}
@@ -287,36 +308,44 @@ export default function RaceRosco({
                 Tur bitti
               </p>
             )}
-            <form onSubmit={submit} className="mt-3 space-y-2">
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={Boolean(feedback) || ended}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder="İngilizce kelime"
-                className="w-full rounded-2xl border border-outline-variant/40 bg-surface px-4 py-3 text-center text-base font-semibold outline-none focus:border-primary"
-              />
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={Boolean(feedback) || ended}
-                  className="btn-tactile flex-1 rounded-full bg-primary py-3 text-sm font-bold text-on-primary disabled:opacity-40"
-                >
-                  Cevapla
-                </button>
-                <button
-                  type="button"
-                  onClick={pass}
-                  disabled={Boolean(feedback) || ended}
-                  className="btn-tactile flex-1 rounded-full border border-outline-variant/50 py-3 text-sm font-bold disabled:opacity-40"
-                >
-                  Pas
-                </button>
-              </div>
-            </form>
+
+            <div className="mt-3 grid gap-2">
+              {item.options.map((opt) => {
+                const isPicked = picked === opt;
+                const isCorrectOpt =
+                  normalize(opt) === normalize(item.english);
+                let style =
+                  'border-outline-variant/40 bg-surface hover:border-primary';
+                if (feedback && isCorrectOpt) {
+                  style =
+                    'border-primary bg-primary-container/30 text-primary';
+                } else if (feedback && isPicked && !isCorrectOpt) {
+                  style = 'border-error bg-error/10 text-error';
+                } else if (isPicked && !feedback) {
+                  style = 'border-primary bg-primary-container/20';
+                }
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    disabled={Boolean(feedback) || ended}
+                    onClick={() => choose(opt)}
+                    className={`btn-tactile w-full rounded-2xl border px-4 py-3.5 text-center text-base font-semibold transition disabled:opacity-80 ${style}`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={pass}
+              disabled={Boolean(feedback) || ended}
+              className="btn-tactile mt-2 w-full rounded-full border border-outline-variant/50 py-3 text-sm font-bold disabled:opacity-40"
+            >
+              Pas
+            </button>
           </>
         )}
       </div>

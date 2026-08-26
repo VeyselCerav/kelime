@@ -134,28 +134,28 @@ export async function buildRaceQuestions(
   const pool = distractorPool.length >= 8 ? distractorPool : words;
 
   return selected.map((word) => {
-    const wrong = shuffle(
-      pool.filter((w) => w.id !== word.id && w.turkish !== word.turkish)
+    const wrongEn = shuffle(
+      pool.filter((w) => w.id !== word.id && w.english !== word.english)
     )
-      .slice(0, 3)
-      .map((w) => w.turkish);
+      .slice(0, 2)
+      .map((w) => w.english);
 
-    while (wrong.length < 3) {
+    while (wrongEn.length < 2) {
       const alt = selected.find(
         (w) =>
           w.id !== word.id &&
-          w.turkish !== word.turkish &&
-          !wrong.includes(w.turkish)
+          w.english !== word.english &&
+          !wrongEn.includes(w.english)
       );
       if (!alt) break;
-      wrong.push(alt.turkish);
+      wrongEn.push(alt.english);
     }
 
     return {
       id: word.id,
-      question: `"${word.english}" kelimesinin Türkçe anlamı nedir?`,
-      options: shuffle([...wrong.slice(0, 3), word.turkish]),
-      answer: word.turkish,
+      question: `“${word.turkish}” anlamına gelen kelime hangisi?`,
+      options: shuffle([...wrongEn.slice(0, 2), word.english]),
+      answer: word.english,
       wordId: word.id,
       english: word.english,
       turkish: word.turkish,
