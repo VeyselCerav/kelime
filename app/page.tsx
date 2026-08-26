@@ -87,6 +87,7 @@ export default function Home() {
     if (selectedModule.slug === 'genel') return 'Genel';
     if (selectedModule.slug === 'en-sik-cikan') return 'En Sık Çıkan';
     if (selectedModule.slug === 'tense-anahtar') return 'Tense';
+    if (selectedModule.slug === 'seviye-seviye') return 'Seviye Seviye';
     return selectedModule.name;
   })();
 

@@ -5,9 +5,11 @@ export function moduleShortName(name: string, slug?: string): string {
   if (slug === 'genel') return 'Genel';
   if (slug === 'en-sik-cikan') return 'En Sık Çıkan';
   if (slug === 'tense-anahtar') return 'Tense';
+  if (slug === 'seviye-seviye') return 'Seviye Seviye';
   if (name.toLowerCase().includes('sık')) return 'En Sık Çıkan';
   if (name.toLowerCase().includes('genel')) return 'Genel';
   if (name.toLowerCase().includes('tense')) return 'Tense';
+  if (name.toLowerCase().includes('seviye')) return 'Seviye Seviye';
   return name.replace(/\s+Kelimeler$/i, '').trim() || name;
 }
 

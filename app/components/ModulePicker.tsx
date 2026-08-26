@@ -6,6 +6,7 @@ function shortName(m: { slug: string; name: string }) {
   if (m.slug === 'genel') return 'Genel';
   if (m.slug === 'en-sik-cikan') return 'En Sık Çıkan';
   if (m.slug === 'tense-anahtar') return 'Tense';
+  if (m.slug === 'seviye-seviye') return 'Seviye Seviye';
   return m.name;
 }
 
@@ -78,7 +79,9 @@ export default function ModulePicker({
               ? 'auto_stories'
               : m.slug === 'tense-anahtar'
                 ? 'schedule'
-                : 'folder_open';
+                : m.slug === 'seviye-seviye'
+                  ? 'stairs'
+                  : 'folder_open';
         return (
           <button
             key={m.id}

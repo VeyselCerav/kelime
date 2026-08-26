@@ -23,6 +23,7 @@ function moduleShortLabel(m: {
   if (m.slug === 'genel') return 'Genel';
   if (m.slug === 'en-sik-cikan') return 'En Sık Çıkan';
   if (m.slug === 'tense-anahtar') return 'Tense';
+  if (m.slug === 'seviye-seviye') return 'Seviye Seviye';
   return m.name;
 }
 
@@ -161,7 +162,13 @@ export default function StudyScopePicker() {
 
       <div>
         <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-outline">
-          {namedGroups ? 'Zaman / tense' : 'Alt grup'}
+          {namedGroups
+            ? selectedModule?.slug === 'seviye-seviye'
+              ? 'Seviye'
+              : selectedModule?.slug === 'tense-anahtar'
+                ? 'Zaman / tense'
+                : 'Kategori'
+            : 'Alt grup'}
         </p>
         {groups.length === 0 ? (
           <p className="text-sm text-on-surface-variant">Bu modülde kelime yok.</p>
