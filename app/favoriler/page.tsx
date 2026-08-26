@@ -11,6 +11,7 @@ interface FavWord {
   english: string;
   turkish: string;
   moduleId: number;
+  imageUrl?: string | null;
 }
 
 export default function FavorilerPage() {
@@ -172,6 +173,7 @@ export default function FavorilerPage() {
           english={current.english}
           turkish={current.turkish}
           wordId={current.id}
+          imageUrl={current.imageUrl}
           isAuthenticated
           isFavorite
           progressLabel={`Favori · ${index + 1}/${words.length}`}

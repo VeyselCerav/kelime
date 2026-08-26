@@ -15,6 +15,7 @@ interface Word {
   turkish: string;
   moduleId: number;
   isLearned?: boolean;
+  imageUrl?: string | null;
 }
 
 export default function FlashCardsClient() {
@@ -143,6 +144,7 @@ export default function FlashCardsClient() {
           english={current.english}
           turkish={current.turkish}
           wordId={Number(current.id)}
+          imageUrl={current.imageUrl}
           isAuthenticated={!!session}
           isFavorite={favoriteIds.has(Number(current.id))}
           onFavoriteChange={(id, favorited) => {

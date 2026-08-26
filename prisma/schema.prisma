@@ -46,6 +46,10 @@ model Word {
   moduleId    Int
   module      Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   addedBy     String
+  /** Kart arka plan görseli — örn. /word-images/12.jpg */
+  imageUrl    String?
+  /** Gemini’ye verilen görsel promptu (yeniden üretim için) */
+  imagePrompt String?
   createdAt   DateTime        @default(now())
   learnedBy   LearnedWord[]
   unlearnedBy UnlearnedWord[]

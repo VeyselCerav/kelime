@@ -21,6 +21,8 @@ interface WordCardProps {
   onFavoriteChange?: (wordId: number, favorited: boolean) => void;
   /** Web Speech ile İngilizce telaffuz (yalnızca kartlar / favoriler) */
   showPronounce?: boolean;
+  /** Çağrıştırıcı arka plan görseli */
+  imageUrl?: string | null;
 }
 
 function speakEnglish(text: string) {
@@ -64,6 +66,7 @@ export default function WordCard({
   isFavorite = false,
   onFavoriteChange,
   showPronounce = false,
+  imageUrl,
 }: WordCardProps) {
   const { data: session } = useSession();
   const [isFlipped, setIsFlipped] = useState(false);
@@ -412,11 +415,35 @@ export default function WordCard({
               }
             }}
           >
-            <div className="flashcard-face paper-texture flex flex-col items-center justify-center rounded-card border border-outline-variant p-6 shadow-soft">
-              <h1 className="mt-8 text-center font-display text-4xl font-bold italic text-primary sm:text-5xl">
+            <div
+              className={`flashcard-face relative flex flex-col items-center justify-center overflow-hidden rounded-card border border-outline-variant p-6 shadow-soft ${
+                imageUrl ? 'bg-on-surface/90' : 'paper-texture'
+              }`}
+            >
+              {imageUrl && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                    draggable={false}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/45 to-black/55" />
+                </>
+              )}
+              <h1
+                className={`relative z-10 mt-8 text-center font-display text-4xl font-bold italic sm:text-5xl ${
+                  imageUrl ? 'text-white drop-shadow-md' : 'text-primary'
+                }`}
+              >
                 {english}
               </h1>
-              <div className="absolute bottom-4 flex items-center gap-1 text-on-surface-variant/50">
+              <div
+                className={`absolute bottom-4 z-10 flex items-center gap-1 ${
+                  imageUrl ? 'text-white/70' : 'text-on-surface-variant/50'
+                }`}
+              >
                 <span className="material-symbols-outlined text-[18px]">
                   swipe
                 </span>
@@ -424,16 +451,50 @@ export default function WordCard({
               </div>
             </div>
 
-            <div className="flashcard-face flashcard-back paper-texture flex flex-col items-center justify-center rounded-card border border-outline-variant p-6 text-center shadow-soft">
-              <div className="mb-4 rounded-full border-2 border-primary-container px-4 py-1">
-                <span className="text-xs font-bold uppercase tracking-widest text-primary">
+            <div
+              className={`flashcard-face flashcard-back relative flex flex-col items-center justify-center overflow-hidden rounded-card border border-outline-variant p-6 text-center shadow-soft ${
+                imageUrl ? 'bg-on-surface/90' : 'paper-texture'
+              }`}
+            >
+              {imageUrl && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="absolute inset-0 h-full w-full scale-105 object-cover blur-[2px]"
+                    draggable={false}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-black/70" />
+                </>
+              )}
+              <div
+                className={`relative z-10 mb-4 rounded-full border-2 px-4 py-1 ${
+                  imageUrl
+                    ? 'border-white/50'
+                    : 'border-primary-container'
+                }`}
+              >
+                <span
+                  className={`text-xs font-bold uppercase tracking-widest ${
+                    imageUrl ? 'text-white/90' : 'text-primary'
+                  }`}
+                >
                   Anlam
                 </span>
               </div>
-              <h2 className="mb-3 font-display text-2xl font-bold text-on-surface sm:text-3xl">
+              <h2
+                className={`relative z-10 mb-3 font-display text-2xl font-bold sm:text-3xl ${
+                  imageUrl ? 'text-white drop-shadow-md' : 'text-on-surface'
+                }`}
+              >
                 {turkish}
               </h2>
-              <p className="max-w-[240px] text-sm italic text-secondary">
+              <p
+                className={`relative z-10 max-w-[240px] text-sm italic ${
+                  imageUrl ? 'text-white/75' : 'text-secondary'
+                }`}
+              >
                 {english}
               </p>
             </div>

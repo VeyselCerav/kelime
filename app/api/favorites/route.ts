@@ -36,6 +36,7 @@ export async function GET() {
             english: true,
             turkish: true,
             moduleId: true,
+            imageUrl: true,
             module: { select: { id: true, slug: true, name: true } },
           },
         },
@@ -48,6 +49,7 @@ export async function GET() {
       english: r.word.english,
       turkish: r.word.turkish,
       moduleId: r.word.moduleId,
+      imageUrl: r.word.imageUrl,
       module: r.word.module,
       favoritedAt: r.createdAt,
     }));

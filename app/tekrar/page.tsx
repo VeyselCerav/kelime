@@ -12,6 +12,7 @@ interface ReviewWord {
   english: string;
   turkish: string;
   moduleId: number;
+  imageUrl?: string | null;
 }
 
 function TekrarClient() {
@@ -123,6 +124,7 @@ function TekrarClient() {
           english={current.english}
           turkish={current.turkish}
           wordId={current.id}
+          imageUrl={current.imageUrl}
           isAuthenticated
           isFavorite={favoriteIds.has(current.id)}
           onFavoriteChange={(id, favorited) => {

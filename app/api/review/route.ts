@@ -54,6 +54,7 @@ export async function GET(request: Request) {
             english: true,
             turkish: true,
             moduleId: true,
+            imageUrl: true,
           },
         },
       },
@@ -65,6 +66,7 @@ export async function GET(request: Request) {
       english: r.word.english,
       turkish: r.word.turkish,
       moduleId: r.word.moduleId,
+      imageUrl: r.word.imageUrl,
       learnedAt: r.updatedAt,
       day: dayKey(r.updatedAt),
     }));
