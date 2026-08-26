@@ -19,51 +19,41 @@ export default function ScopeProgressBar({
 }) {
   if (!progress || progress.total === 0) return null;
 
+  const moduleTotal = progress.moduleTotal ?? 0;
+  const moduleLearned = progress.moduleLearned ?? 0;
+  const modulePct =
+    moduleTotal > 0
+      ? Math.round((moduleLearned / moduleTotal) * 100)
+      : 0;
+
   return (
-    <div className="rounded-2xl border border-outline-variant/40 bg-surface-container-lowest px-4 py-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-outline">
-          Alt grup ilerlemesi
-        </p>
-        <p className="text-sm font-bold text-primary">
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-3">
+        <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-container-highest">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-500"
+            style={{ width: `${progress.percentage}%` }}
+          />
+        </div>
+        <span className="shrink-0 text-[11px] font-semibold tabular-nums text-on-surface-variant">
           {progress.learned}/{progress.total}
-          {progress.complete ? ' · Tamam' : ''}
-        </p>
-      </div>
-      {progress.label && (
-        <p className="mt-0.5 text-xs text-on-surface-variant">{progress.label}</p>
-      )}
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-container-highest">
-        <div
-          className="h-full rounded-full bg-primary-container transition-all duration-500"
-          style={{ width: `${progress.percentage}%` }}
-        />
+          {progress.complete ? ' ✓' : ''}
+        </span>
       </div>
 
-      {showModule &&
-        typeof progress.moduleTotal === 'number' &&
-        progress.moduleTotal > 0 && (
-          <div className="mt-3 border-t border-outline-variant/30 pt-2">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-outline">
-                Modül
-              </p>
-              <p className="text-xs font-semibold text-on-surface-variant">
-                {progress.moduleLearned ?? 0}/{progress.moduleTotal}
-              </p>
-            </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-container-highest">
-              <div
-                className="h-full rounded-full bg-secondary-container transition-all duration-500"
-                style={{
-                  width: `${Math.round(
-                    ((progress.moduleLearned ?? 0) / progress.moduleTotal) * 100
-                  )}%`,
-                }}
-              />
-            </div>
+      {showModule && moduleTotal > 0 && (
+        <div className="flex items-center gap-3">
+          <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-container-highest">
+            <div
+              className="h-full rounded-full bg-secondary-container transition-all duration-500"
+              style={{ width: `${modulePct}%` }}
+            />
           </div>
-        )}
+          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-on-surface-variant">
+            {moduleLearned}/{moduleTotal}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
