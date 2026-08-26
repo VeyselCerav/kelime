@@ -140,7 +140,8 @@ export default function RacePage() {
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ready: (mode === 'practice' || mode === 'versus') && ready && !inGame,
+        // Lobide görünmek yalnızca “Rakiple yarış” modunda
+        ready: mode === 'versus' && ready && !inGame,
         moduleId: selectedModuleId,
         groupIndex: selectedGroupIndex,
       }),
@@ -486,20 +487,20 @@ export default function RacePage() {
       {inviteOverlay}
 
       {!playing && !soloPlaying && (
-        <div>
-          <h1 className="font-display text-2xl font-bold text-on-surface">
+        <div className={mode === null ? 'race-home-hero' : undefined}>
+          <h1 className="font-display text-2xl font-bold text-on-surface sm:text-3xl">
             {mode === 'practice'
               ? 'Antrenman'
               : mode === 'versus'
                 ? 'Rakiple yarış'
-                : 'Yarış'}
+                : 'Yarış Arena'}
           </h1>
           <p className="mt-1 text-sm text-on-surface-variant">
             {mode === 'practice'
-              ? 'Tek oyna veya birini davet et. İkiniz de 120 saniye, aynı çember.'
+              ? 'Tek başına 120 saniye · aynı harf çemberi.'
               : mode === 'versus'
-                ? 'Çevrimiçi rakip davet et. Her maçta modülden yeni 20 kelime gelir.'
-                : 'Antrenman mı, yoksa rakiple yarış mı?'}
+                ? 'Hazır rakipleri gör, davet at · 120 saniye.'
+                : 'Harf çemberinde hızını ve kelime bilgini test et.'}
           </p>
         </div>
       )}
@@ -509,45 +510,66 @@ export default function RacePage() {
       )}
 
       {!matchId && !solo && mode === null && (
-        <div className="space-y-3">
+        <div className="grid gap-4">
           <button
             type="button"
             onClick={() => {
               setError('');
+              setReady(false);
               setMode('practice');
             }}
-            className="btn-tactile paper-texture w-full rounded-card border border-outline-variant/40 p-5 text-left"
+            className="race-mode-card race-mode-card--practice btn-tactile group relative overflow-hidden rounded-card p-6 text-left text-white"
           >
-            <span className="material-symbols-outlined text-4xl text-primary">
-              fitness_center
+            <span className="race-mode-card__glow" aria-hidden />
+            <span className="relative z-10 flex items-start justify-between gap-3">
+              <span>
+                <span className="material-symbols-outlined text-4xl">
+                  fitness_center
+                </span>
+                <span className="mt-3 block font-display text-2xl font-bold">
+                  Antrenman
+                </span>
+                <span className="mt-1 block max-w-[16rem] text-sm text-white/85">
+                  Tek oyna, ritmini bul. Davet yok — sadece sen ve çember.
+                </span>
+              </span>
+              <span className="material-symbols-outlined mt-1 text-3xl opacity-80 transition group-hover:translate-x-1">
+                arrow_forward
+              </span>
             </span>
-            <span className="mt-3 block font-display text-xl font-bold">
-              Antrenman
-            </span>
-            <span className="mt-1 block text-sm text-on-surface-variant">
-              Tek oyna veya ikinci kişiyi davet et. Karşılıklı 120 saniye, aynı
-              harf çemberi.
-            </span>
+            <span className="race-mode-card__pulse" aria-hidden />
           </button>
+
           <button
             type="button"
             onClick={() => {
               setError('');
+              setReady(true);
               setMode('versus');
             }}
-            className="btn-tactile paper-texture w-full rounded-card border border-outline-variant/40 p-5 text-left"
+            className="race-mode-card race-mode-card--versus btn-tactile group relative overflow-hidden rounded-card p-6 text-left text-white"
           >
-            <span className="material-symbols-outlined text-4xl text-secondary">
-              swords
+            <span className="race-mode-card__glow" aria-hidden />
+            <span className="relative z-10 flex items-start justify-between gap-3">
+              <span>
+                <span className="material-symbols-outlined text-4xl">swords</span>
+                <span className="mt-3 block font-display text-2xl font-bold">
+                  Rakiple yarış
+                </span>
+                <span className="mt-1 block max-w-[16rem] text-sm text-white/85">
+                  Lobide görün, davet at. Aynı 20 kelime · kim daha hızlı?
+                </span>
+              </span>
+              <span className="material-symbols-outlined mt-1 text-3xl opacity-80 transition group-hover:translate-x-1">
+                arrow_forward
+              </span>
             </span>
-            <span className="mt-3 block font-display text-xl font-bold">
-              Rakiple yarış
-            </span>
-            <span className="mt-1 block text-sm text-on-surface-variant">
-              Hazır oyuncuları gör, davet at. Her maçta yeni 20 kelime; eşitlikte
-              daha hızlı olan önde.
-            </span>
+            <span className="race-mode-card__pulse" aria-hidden />
           </button>
+
+          <p className="race-home-hint text-center text-xs text-on-surface-variant">
+            20 harf · 120 saniye · Passaparola stili
+          </p>
         </div>
       )}
 
@@ -566,11 +588,10 @@ export default function RacePage() {
             type="button"
             disabled={busy || !selectedModuleId}
             onClick={() => void startSolo()}
-            className="btn-tactile w-full rounded-full bg-primary py-3 font-bold text-on-primary disabled:opacity-40"
+            className="btn-tactile w-full rounded-full bg-primary py-3.5 font-bold text-on-primary disabled:opacity-40"
           >
             Tek başına başla
           </button>
-          {lobbyPlayers}
         </>
       )}
 
