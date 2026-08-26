@@ -417,7 +417,7 @@ export default function WordCard({
           >
             <div
               className={`flashcard-face relative flex flex-col items-center justify-center overflow-hidden rounded-card border border-outline-variant p-6 shadow-soft ${
-                imageUrl ? 'bg-on-surface/90' : 'paper-texture'
+                imageUrl ? 'bg-[#1a2420]' : 'paper-texture'
               }`}
             >
               {imageUrl && (
@@ -426,10 +426,10 @@ export default function WordCard({
                   <img
                     src={imageUrl}
                     alt=""
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                     draggable={false}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/45 to-black/55" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-black/55 to-black/65" />
                 </>
               )}
               <h1
@@ -453,7 +453,7 @@ export default function WordCard({
 
             <div
               className={`flashcard-face flashcard-back relative flex flex-col items-center justify-center overflow-hidden rounded-card border border-outline-variant p-6 text-center shadow-soft ${
-                imageUrl ? 'bg-on-surface/90' : 'paper-texture'
+                imageUrl ? 'bg-[#1a2420]' : 'paper-texture'
               }`}
             >
               {imageUrl && (
@@ -462,10 +462,10 @@ export default function WordCard({
                   <img
                     src={imageUrl}
                     alt=""
-                    className="absolute inset-0 h-full w-full scale-105 object-cover blur-[2px]"
+                    className="pointer-events-none absolute inset-0 h-full w-full scale-105 object-cover blur-[2px]"
                     draggable={false}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-black/70" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-black/65 to-black/75" />
                 </>
               )}
               <div

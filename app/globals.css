@@ -111,6 +111,7 @@ body {
 
 .flashcard-inner {
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   touch-action: none;
   -webkit-user-drag: none;
   user-select: none;
@@ -127,10 +128,20 @@ body {
   -webkit-backface-visibility: hidden;
   position: absolute;
   inset: 0;
+  /* Safari: iç içe img/text’in ters yüzde görünmesini engeller */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  background-color: #fffbf5;
+}
+
+.flashcard-face > * {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .flashcard-back {
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(0);
+  -webkit-transform: rotateY(180deg) translateZ(0);
 }
 
 .progress-ring__circle {
