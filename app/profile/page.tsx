@@ -37,10 +37,21 @@ interface Progress {
   weeklyData: number[];
 }
 
+interface RankInfo {
+  totalUsers: number;
+  learnedCount: number;
+  activityScore: number;
+  quizCount: number;
+  raceCount: number;
+  learnedRank: number;
+  activityRank: number;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [rank, setRank] = useState<RankInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,12 +63,18 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const progressResponse = await fetch('/api/progress');
+        const [progressResponse, rankResponse] = await Promise.all([
+          fetch('/api/progress'),
+          fetch('/api/progress/rank', { cache: 'no-store' }),
+        ]);
         if (!progressResponse.ok) {
           throw new Error('İlerleme bilgileri alınamadı');
         }
         const progressData = await progressResponse.json();
         setProgress(progressData);
+        if (rankResponse.ok) {
+          setRank(await rankResponse.json());
+        }
       } catch (error) {
         console.error('Veri alınamadı:', error);
       } finally {
@@ -132,6 +149,36 @@ export default function ProfilePage() {
         <span className="material-symbols-outlined text-[20px]">star</span>
         Favorilerim
       </Link>
+
+      {rank && (
+        <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-card border border-primary/15 bg-primary-container/15 p-5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-outline">
+              Ezber sıralaması
+            </p>
+            <p className="mt-2 font-display text-3xl font-bold text-primary">
+              {rank.learnedRank}.
+            </p>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              {rank.totalUsers} kullanıcı arasında · {rank.learnedCount} kelime
+            </p>
+          </div>
+          <div className="rounded-card border border-secondary/20 bg-secondary-container/20 p-5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-outline">
+              Çalışma sıralaması
+            </p>
+            <p className="mt-2 font-display text-3xl font-bold text-on-secondary-container">
+              {rank.activityRank}.
+            </p>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              {rank.totalUsers} kullanıcı arasında · puan {rank.activityScore}
+              <span className="mt-0.5 block text-xs">
+                (ezber + quiz + yarış)
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* İlerleme Kartları */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
