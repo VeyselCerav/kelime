@@ -126,6 +126,9 @@ export default function WordCard({
     draggingRef.current = false;
     pointerIdRef.current = null;
     exitDirRef.current = null;
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
   }, [wordId, isFavorite]);
 
   useEffect(() => {
@@ -306,6 +309,10 @@ export default function WordCard({
         setOffsetX(0);
         axisRef.current = 'none';
         movedRef.current = false;
+        // Android: odak kayınca sayfa yukarı zıplamasın
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
         return;
       }
 
@@ -322,15 +329,35 @@ export default function WordCard({
 
       axisRef.current = 'none';
       movedRef.current = false;
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    };
+
+    // Android Chrome: pull-to-refresh touchmove dinler; yatay swipe sırasında engelle
+    const onTouchMove = (e: TouchEvent) => {
+      if (!draggingRef.current) return;
+      if (axisRef.current === 'y') return;
+      if (axisRef.current === 'x') {
+        e.preventDefault();
+        return;
+      }
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const dx = Math.abs(t.clientX - startX.current);
+      const dy = Math.abs(t.clientY - startY.current);
+      if (dx > 8 && dx >= dy) e.preventDefault();
     };
 
     window.addEventListener('pointermove', onMove, { passive: false });
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('touchmove', onTouchMove);
     };
   }, []);
 
@@ -347,6 +374,18 @@ export default function WordCard({
     draggingRef.current = true;
     setIsDragging(true);
     setOffsetX(0);
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    // Odak al ama Android’in scrollIntoView’unu tetikleme
+    try {
+      e.currentTarget.focus({ preventScroll: true });
+    } catch {
+      /* ignore */
+    }
   };
 
   const rotation = Math.max(-14, Math.min(14, offsetX / 16));
@@ -362,10 +401,14 @@ export default function WordCard({
         </p>
       )}
 
-      <div className="relative mx-auto w-full max-w-md sm:max-w-lg">
+      <div className="relative mx-auto w-full max-w-md overscroll-y-contain sm:max-w-lg">
         <div
           className="perspective-1000 relative z-0 aspect-[3/4] w-full select-none"
-          style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
+          style={{
+            touchAction: 'none',
+            WebkitUserSelect: 'none',
+            overscrollBehavior: 'none',
+          }}
         >
           <div
             className="pointer-events-none absolute inset-y-8 left-2 z-10 flex items-center"

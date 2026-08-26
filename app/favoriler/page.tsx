@@ -186,9 +186,15 @@ export default function FavorilerPage() {
               });
             }
           }}
-          onActionComplete={() =>
-            setIndex((i) => (i + 1 < words.length ? i + 1 : 0))
-          }
+          onActionComplete={() => {
+            const y = typeof window !== 'undefined' ? window.scrollY : 0;
+            setIndex((i) => (i + 1 < words.length ? i + 1 : 0));
+            if (typeof window === 'undefined') return;
+            requestAnimationFrame(() => {
+              window.scrollTo(0, y);
+              requestAnimationFrame(() => window.scrollTo(0, y));
+            });
+          }}
           onProgressSaved={() => void refreshBadges()}
           showPronounce
         />

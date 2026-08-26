@@ -88,7 +88,14 @@ export default function FlashCardsClient() {
   }, [selectedModuleId, selectedGroupIndex, mode, unlearnedOnly]);
 
   const goNext = () => {
+    // Android: yeni kart render’ında odak/layout sayfayı yukarı çekmesin
+    const y = typeof window !== 'undefined' ? window.scrollY : 0;
     setCurrentWordIndex((i) => (i + 1 < words.length ? i + 1 : 0));
+    if (typeof window === 'undefined') return;
+    requestAnimationFrame(() => {
+      window.scrollTo(0, y);
+      requestAnimationFrame(() => window.scrollTo(0, y));
+    });
   };
 
   const current = words[currentWordIndex];
