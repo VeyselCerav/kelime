@@ -91,11 +91,15 @@ export default function StudyScopePicker() {
         total: p?.total ?? g.count,
       };
     });
+    // Çalışılan (seçili) ilk · bitmemişler · bitenler en sonda
     return [...items].sort((a, b) => {
+      const aSel = a.index === selectedGroupIndex ? 0 : 1;
+      const bSel = b.index === selectedGroupIndex ? 0 : 1;
+      if (aSel !== bSel) return aSel - bSel;
       if (a.complete !== b.complete) return a.complete ? 1 : -1;
       return a.index - b.index;
     });
-  }, [groups, groupProgress]);
+  }, [groups, groupProgress, selectedGroupIndex]);
 
   // Sadece kullanıcı grup değiştirdiğinde yatay kaydır; ilerleme güncellemesi sayfayı kaydırmaz
   const prevGroupIndexRef = useRef<number | null>(null);
