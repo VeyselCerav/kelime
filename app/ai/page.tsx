@@ -206,9 +206,6 @@ export default function AiStudioPage() {
             <span className="material-symbols-outlined text-base">auto_awesome</span>
             AI Ezber Atölyesi
           </p>
-          <h1 className="font-display text-2xl font-bold italic leading-tight sm:text-3xl">
-            Kelimelerin hikâyesi
-          </h1>
           <p className="mt-2 max-w-md text-sm text-white/80">
             Ezberleyemediğin kelimelerden sade bir İngilizce paragraf ve Türkçe
             çevirisi üretir. Vurgulanan kelimeye dokun, anlamı gör, ezberle.
@@ -323,18 +320,17 @@ export default function AiStudioPage() {
             type="button"
             onClick={() => void generate()}
             disabled={generating || selectedIds.length < MIN}
-            className="btn-tactile flex w-full items-center justify-center gap-2 rounded-card bg-secondary-container py-4 font-display text-lg font-semibold text-on-secondary-container shadow-soft disabled:opacity-50"
+            className="btn-tactile flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-transparent py-3.5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-on-primary disabled:opacity-50 disabled:hover:border-primary/40 disabled:hover:bg-transparent disabled:hover:text-primary"
           >
             {generating ? (
               <>
-                <span className="h-5 w-5 animate-spin rounded-full border-2 border-on-secondary-container border-t-transparent" />
-                Hikâye yazılıyor…
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Yazılıyor…
               </>
+            ) : result ? (
+              'Yeni paragraf üret'
             ) : (
-              <>
-                <span className="material-symbols-outlined">auto_awesome</span>
-                {result ? 'Yeni paragraf üret' : 'Paragraf üret'}
-              </>
+              'Paragraf üret'
             )}
           </button>
         </>
