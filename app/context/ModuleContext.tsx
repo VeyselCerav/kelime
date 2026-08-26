@@ -42,12 +42,55 @@ interface ModuleContextType {
 
 const ModuleContext = createContext<ModuleContextType | undefined>(undefined);
 const STORAGE_MODULE = 'yds-selected-module-id';
-const STORAGE_GROUP = 'yds-selected-group-index';
+/** Eski tek anahtar — ilk yüklemede migrate edilir */
+const STORAGE_GROUP_LEGACY = 'yds-selected-group-index';
+/** Modül başına kaldığın grup: { "2": 34, "1": 3 } */
+const STORAGE_GROUPS_BY_MODULE = 'yds-group-by-module';
 const STORAGE_UNLEARNED = 'yds-unlearned-only';
+
+function readGroupMap(): Record<string, number> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_GROUPS_BY_MODULE);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        const n = Number(v);
+        if (!Number.isNaN(n) && n >= 1) out[k] = n;
+      }
+      return out;
+    }
+  } catch {
+    /* ignore */
+  }
+  return {};
+}
+
+function writeGroupMap(map: Record<string, number>) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(STORAGE_GROUPS_BY_MODULE, JSON.stringify(map));
+}
+
+function groupForModule(moduleId: number, maxGroup?: number): number {
+  const map = readGroupMap();
+  let g = map[String(moduleId)] ?? 1;
+  if (maxGroup && g > maxGroup) g = 1;
+  return Math.max(1, g);
+}
+
+function saveGroupForModule(moduleId: number, groupIndex: number) {
+  const map = readGroupMap();
+  map[String(moduleId)] = groupIndex;
+  writeGroupMap(map);
+  localStorage.setItem(STORAGE_GROUP_LEGACY, String(groupIndex));
+}
 
 export function ModuleProvider({ children }: { children: React.ReactNode }) {
   const [modules, setModules] = useState<ModuleInfo[]>([]);
-  const [selectedModuleId, setSelectedModuleIdState] = useState<number | null>(null);
+  const [selectedModuleId, setSelectedModuleIdState] = useState<number | null>(
+    null
+  );
   const [selectedGroupIndex, setSelectedGroupIndexState] = useState(1);
   const [unlearnedOnly, setUnlearnedOnlyState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,14 +126,24 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const stored = Number(localStorage.getItem(STORAGE_GROUP));
-    if (!Number.isNaN(stored) && stored >= 1) {
-      setSelectedGroupIndexState(stored);
+    // Eski tek grup anahtarını aktif modüle taşı
+    const map = readGroupMap();
+    const legacy = Number(localStorage.getItem(STORAGE_GROUP_LEGACY));
+    const modId = Number(localStorage.getItem(STORAGE_MODULE));
+    if (
+      !Number.isNaN(legacy) &&
+      legacy >= 1 &&
+      !Number.isNaN(modId) &&
+      map[String(modId)] == null
+    ) {
+      map[String(modId)] = legacy;
+      writeGroupMap(map);
     }
     setUnlearnedOnlyState(localStorage.getItem(STORAGE_UNLEARNED) === '1');
   }, []);
 
-  const selectedModule = modules.find((m) => m.id === selectedModuleId) ?? null;
+  const selectedModule =
+    modules.find((m) => m.id === selectedModuleId) ?? null;
 
   const groups = useMemo(() => {
     if (!selectedModule) return [];
@@ -104,27 +157,33 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
     );
   }, [selectedModule]);
 
+  // Modül değişince o modülde kaldığın grubu yükle
+  useEffect(() => {
+    if (!selectedModuleId || !groups.length) return;
+    const restored = groupForModule(selectedModuleId, groups.length);
+    setSelectedGroupIndexState(restored);
+  }, [selectedModuleId, groups.length]);
+
   useEffect(() => {
     if (!groups.length) return;
     if (selectedGroupIndex > groups.length) {
       setSelectedGroupIndexState(1);
-      localStorage.setItem(STORAGE_GROUP, '1');
+      if (selectedModuleId) saveGroupForModule(selectedModuleId, 1);
     }
-  }, [groups, selectedGroupIndex]);
+  }, [groups, selectedGroupIndex, selectedModuleId]);
 
   const setSelectedModuleId = (id: number) => {
     setSelectedModuleIdState(id);
-    setSelectedGroupIndexState(1);
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_MODULE, String(id));
-      localStorage.setItem(STORAGE_GROUP, '1');
     }
+    // Grup index’i useEffect ile o modülün kaydından gelecek
   };
 
   const setSelectedGroupIndex = (index: number) => {
     setSelectedGroupIndexState(index);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_GROUP, String(index));
+    if (selectedModuleId != null) {
+      saveGroupForModule(selectedModuleId, index);
     }
   };
 
@@ -135,7 +194,8 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const selectedGroup = groups.find((g) => g.index === selectedGroupIndex) ?? groups[0] ?? null;
+  const selectedGroup =
+    groups.find((g) => g.index === selectedGroupIndex) ?? groups[0] ?? null;
 
   return (
     <ModuleContext.Provider
