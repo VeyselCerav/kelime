@@ -6,6 +6,7 @@ import { ModuleProvider } from './context/ModuleContext';
 import { BadgeProvider } from './context/BadgeContext';
 import BottomNav from './components/BottomNav';
 import TopAppBar from './components/TopAppBar';
+import AdminTopNav from './components/AdminTopNav';
 
 const bareRoutes = ['/login', '/register'];
 const authRoutes = ['/auth'];
@@ -50,7 +51,8 @@ export default function ClientLayout({
       <BadgeProvider>
         <div className="flex min-h-screen flex-col bg-surface text-on-surface">
           {!isAdmin && <TopAppBar />}
-          <main className={`flex-1 ${!isAdmin ? 'pb-28 pt-2' : ''}`}>
+          {isAdmin && <AdminTopNav />}
+          <main className={`flex-1 ${!isAdmin ? 'pb-28 pt-2' : 'pb-8'}`}>
             {children}
           </main>
           {!isAdmin && <BottomNav />}
