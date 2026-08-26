@@ -200,22 +200,6 @@ export default function AiStudioPage() {
 
   return (
     <div className="app-shell space-y-6 py-4">
-      <section className="relative overflow-hidden rounded-card bg-gradient-to-br from-primary to-[#2f4a32] p-6 text-white shadow-soft">
-        <div className="relative z-10">
-          <p className="mb-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
-            <span className="material-symbols-outlined text-base">auto_awesome</span>
-            AI Ezber Atölyesi
-          </p>
-          <p className="mt-2 max-w-md text-sm text-white/80">
-            Ezberleyemediğin kelimelerden sade bir İngilizce paragraf ve Türkçe
-            çevirisi üretir. Vurgulanan kelimeye dokun, anlamı gör, ezberle.
-          </p>
-        </div>
-        <span className="material-symbols-outlined pointer-events-none absolute -bottom-4 -right-3 text-[120px] text-white/10">
-          menu_book
-        </span>
-      </section>
-
       {listError && (
         <p className="rounded-card bg-error/10 p-4 text-sm text-error">{listError}</p>
       )}
