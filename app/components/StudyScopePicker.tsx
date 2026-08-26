@@ -120,7 +120,7 @@ export default function StudyScopePicker() {
 
     const left =
       el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
-    scroller.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    scroller.scrollTo({ left: Math.max(0, left), behavior: 'auto' });
   }, [selectedGroupIndex]);
 
   if (isLoading) {
@@ -175,7 +175,8 @@ export default function StudyScopePicker() {
         ) : (
           <div
             ref={scrollerRef}
-            className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+            className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [overflow-anchor:none]"
+            style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
           >
             {sortedChips.map((g) => {
               const active = g.index === selectedGroupIndex;
@@ -199,7 +200,7 @@ export default function StudyScopePicker() {
                     else chipRefs.current.delete(g.index);
                   }}
                   onClick={() => setSelectedGroupIndex(g.index)}
-                  className={`btn-tactile relative shrink-0 rounded-full border px-4 py-2.5 text-left transition ${
+                  className={`btn-tactile relative flex h-[52px] min-w-[7.5rem] shrink-0 flex-col justify-center rounded-full border px-4 py-2 text-left transition ${
                     g.complete
                       ? active
                         ? 'border-primary bg-primary text-on-primary shadow-soft ring-2 ring-primary/40 ring-offset-2'

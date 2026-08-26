@@ -86,8 +86,10 @@ body {
 }
 
 /* Android Chrome: kart kaydırırken pull-to-refresh / overscroll zıplamasını azalt */
-html {
-  overscroll-behavior-y: contain;
+html,
+body {
+  overscroll-behavior: none;
+  overflow-anchor: none;
 }
 
 @layer utilities {

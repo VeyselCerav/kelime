@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
@@ -8,6 +8,7 @@ import WordCard from '../components/WordCard';
 import StudyScopePicker from '../components/StudyScopePicker';
 import { useModule } from '../context/ModuleContext';
 import { useBadgeContext } from '../context/BadgeContext';
+import { getLockedScrollY, pinWindowScroll } from '@/lib/scroll-lock';
 
 interface Word {
   id: number;
@@ -30,6 +31,8 @@ export default function FlashCardsClient() {
   const { refreshBadges } = useBadgeContext();
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
+  const pinYRef = useRef<number | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadFavorites = useCallback(async () => {
     if (!session) {
@@ -52,6 +55,12 @@ export default function FlashCardsClient() {
   useEffect(() => {
     void loadFavorites();
   }, [loadFavorites]);
+
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (mode === 'practice') {
@@ -88,21 +97,34 @@ export default function FlashCardsClient() {
   }, [selectedModuleId, selectedGroupIndex, mode, unlearnedOnly]);
 
   const goNext = () => {
-    // Android: yeni kart render’ında odak/layout sayfayı yukarı çekmesin
-    const y = typeof window !== 'undefined' ? window.scrollY : 0;
+    pinYRef.current =
+      getLockedScrollY() ??
+      (typeof window !== 'undefined' ? window.scrollY : 0);
     setCurrentWordIndex((i) => (i + 1 < words.length ? i + 1 : 0));
-    if (typeof window === 'undefined') return;
-    requestAnimationFrame(() => {
-      window.scrollTo(0, y);
-      requestAnimationFrame(() => window.scrollTo(0, y));
-    });
+  };
+
+  useLayoutEffect(() => {
+    if (pinYRef.current == null) return;
+    pinWindowScroll(pinYRef.current);
+    const y = pinYRef.current;
+    const t = window.setTimeout(() => pinWindowScroll(y), 50);
+    return () => window.clearTimeout(t);
+  }, [currentWordIndex]);
+
+  const scheduleProgressRefresh = () => {
+    if (mode === 'practice') return;
+    if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
+    // Chip yeniden çizimi Android’de sayfayı zıplatıyor; kaydırmalar bitsin
+    progressTimerRef.current = setTimeout(() => {
+      window.dispatchEvent(new Event('yds-scope-progress'));
+    }, 2500);
   };
 
   const current = words[currentWordIndex];
 
   return (
-    <div className="app-shell flex flex-col py-4">
-      <div className="mb-4">
+    <div className="app-shell flex flex-col overflow-anchor-none py-4 [overflow-anchor:none]">
+      <div className="mb-4 [overflow-anchor:none]">
         <StudyScopePicker />
       </div>
 
@@ -172,9 +194,7 @@ export default function FlashCardsClient() {
           onActionComplete={goNext}
           onProgressSaved={() => {
             void refreshBadges();
-            if (mode !== 'practice') {
-              window.dispatchEvent(new Event('yds-scope-progress'));
-            }
+            scheduleProgressRefresh();
           }}
           showPronounce
         />

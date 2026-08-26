@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import WordCard from '../components/WordCard';
 import { useBadgeContext } from '../context/BadgeContext';
+import { getLockedScrollY, pinWindowScroll } from '@/lib/scroll-lock';
 
 interface FavWord {
   id: number;
@@ -187,13 +188,11 @@ export default function FavorilerPage() {
             }
           }}
           onActionComplete={() => {
-            const y = typeof window !== 'undefined' ? window.scrollY : 0;
+            const y =
+              getLockedScrollY() ??
+              (typeof window !== 'undefined' ? window.scrollY : 0);
             setIndex((i) => (i + 1 < words.length ? i + 1 : 0));
-            if (typeof window === 'undefined') return;
-            requestAnimationFrame(() => {
-              window.scrollTo(0, y);
-              requestAnimationFrame(() => window.scrollTo(0, y));
-            });
+            pinWindowScroll(y);
           }}
           onProgressSaved={() => void refreshBadges()}
           showPronounce

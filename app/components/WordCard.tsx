@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { lockBodyScroll, unlockBodyScroll } from '@/lib/scroll-lock';
 
 /** Ekran genişliğinin ~%22’si; min 72 / max 140 */
 function swipeThreshold(): number {
@@ -92,6 +93,19 @@ export default function WordCard({
   const wordIdRef = useRef(wordId);
   const onActionCompleteRef = useRef(onActionComplete);
   const onProgressSavedRef = useRef(onProgressSaved);
+  const scrollLockedRef = useRef(false);
+
+  const releaseScrollLock = () => {
+    if (!scrollLockedRef.current) return;
+    scrollLockedRef.current = false;
+    unlockBodyScroll();
+  };
+
+  const acquireScrollLock = () => {
+    if (scrollLockedRef.current) return;
+    scrollLockedRef.current = true;
+    lockBodyScroll();
+  };
 
   useEffect(() => {
     sessionRef.current = session;
@@ -126,13 +140,20 @@ export default function WordCard({
     draggingRef.current = false;
     pointerIdRef.current = null;
     exitDirRef.current = null;
+    releaseScrollLock();
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
+    // releaseScrollLock kasıtlı: word değişince kilidi aç
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wordId, isFavorite]);
 
   useEffect(() => {
     return () => {
+      if (scrollLockedRef.current) {
+        scrollLockedRef.current = false;
+        unlockBodyScroll();
+      }
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -187,6 +208,7 @@ export default function WordCard({
     exitDirRef.current = null;
     setIsDragging(false);
     draggingRef.current = false;
+    releaseScrollLock();
   };
 
   const markAsUnlearned = async () => {
@@ -283,6 +305,9 @@ export default function WordCard({
       if (axisRef.current === 'none') {
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
         axisRef.current = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+        // Yatay kaydırma: sayfa kilidi. Dikey: kilidi bırak (sayfa kayabilsin).
+        if (axisRef.current === 'x') acquireScrollLock();
+        else releaseScrollLock();
       }
 
       if (axisRef.current === 'y') return;
@@ -293,7 +318,7 @@ export default function WordCard({
       setOffsetX(dx);
     };
 
-    const onUp = (e: PointerEvent) => {
+    const finishPointer = (e: PointerEvent) => {
       if (pointerIdRef.current !== e.pointerId) return;
       if (!draggingRef.current) return;
 
@@ -301,15 +326,18 @@ export default function WordCard({
       setIsDragging(false);
       pointerIdRef.current = null;
 
-      if (axisRef.current !== 'x' || !movedRef.current) {
-        if (!movedRef.current && axisRef.current !== 'y') {
+      const axis = axisRef.current;
+      const moved = movedRef.current;
+
+      if (axis !== 'x' || !moved) {
+        if (!moved && axis !== 'y') {
           setIsFlipped((f) => !f);
         }
         offsetRef.current = 0;
         setOffsetX(0);
         axisRef.current = 'none';
         movedRef.current = false;
-        // Android: odak kayınca sayfa yukarı zıplamasın
+        releaseScrollLock();
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
@@ -320,11 +348,13 @@ export default function WordCard({
       const threshold = swipeThreshold();
       if (dx >= threshold) {
         commitSwipeRef.current('right');
+        // Sonraki karta geçene kadar kilit kalsın; wordId effect açar
       } else if (dx <= -threshold) {
         commitSwipeRef.current('left');
       } else {
         offsetRef.current = 0;
         setOffsetX(0);
+        releaseScrollLock();
       }
 
       axisRef.current = 'none';
@@ -334,31 +364,24 @@ export default function WordCard({
       }
     };
 
-    // Android Chrome: pull-to-refresh touchmove dinler; yatay swipe sırasında engelle
+    // Kart üzerinde parmak varken Android pull-to-refresh’i kes
     const onTouchMove = (e: TouchEvent) => {
       if (!draggingRef.current) return;
       if (axisRef.current === 'y') return;
-      if (axisRef.current === 'x') {
-        e.preventDefault();
-        return;
-      }
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      const dx = Math.abs(t.clientX - startX.current);
-      const dy = Math.abs(t.clientY - startY.current);
-      if (dx > 8 && dx >= dy) e.preventDefault();
+      e.preventDefault();
     };
 
     window.addEventListener('pointermove', onMove, { passive: false });
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('pointerup', finishPointer);
+    window.addEventListener('pointercancel', finishPointer);
     window.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => {
       window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('pointerup', finishPointer);
+      window.removeEventListener('pointercancel', finishPointer);
       window.removeEventListener('touchmove', onTouchMove);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -377,12 +400,6 @@ export default function WordCard({
 
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    // Odak al ama Android’in scrollIntoView’unu tetikleme
-    try {
-      e.currentTarget.focus({ preventScroll: true });
     } catch {
       /* ignore */
     }
@@ -430,14 +447,14 @@ export default function WordCard({
           </div>
 
           <div
-            role="button"
-            tabIndex={0}
             aria-label="Kelime kartı. Kaydır veya dokunarak çevir."
             className={`flashcard-inner paper-stack relative z-0 h-full w-full cursor-grab active:cursor-grabbing ${
               isFlipped ? 'is-flipped' : ''
             } ${isDragging || exitDir ? '' : 'transition-transform duration-200 ease-out'}`}
             style={{
               touchAction: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
               transform: isFlipped
                 ? `translate3d(${offsetX}px, 0, 0) rotate(${rotation}deg) rotateY(180deg)`
                 : `translate3d(${offsetX}px, 0, 0) rotate(${rotation}deg)`,
@@ -445,18 +462,6 @@ export default function WordCard({
               willChange: isDragging ? 'transform' : undefined,
             }}
             onPointerDown={onPointerDown}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setIsFlipped((f) => !f);
-              } else if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                commitSwipe('right');
-              } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                commitSwipe('left');
-              }
-            }}
           >
             <div
               className={`flashcard-face relative flex flex-col items-center justify-center overflow-hidden rounded-card border border-outline-variant p-6 shadow-soft ${
