@@ -38,7 +38,6 @@ export default function Quiz({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
-  const [showHint, setShowHint] = useState(false);
   const [error, setError] = useState('');
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [results, setResults] = useState<QuizResultSummary>({
@@ -57,7 +56,6 @@ export default function Quiz({
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswered(false);
-    setShowHint(false);
     setQuizCompleted(false);
     savedRef.current = false;
     setResults({
@@ -119,7 +117,6 @@ export default function Quiz({
     }
     setSelectedAnswer(null);
     setIsAnswered(false);
-    setShowHint(false);
     setCurrentQuestionIndex(nextIndex);
   };
 
@@ -128,7 +125,6 @@ export default function Quiz({
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswered(false);
-    setShowHint(false);
     setQuizCompleted(false);
     setResults({
       totalQuestions: questions.length,
@@ -215,12 +211,6 @@ export default function Quiz({
         <h2 className="mb-2 font-display text-[22px] font-bold leading-tight text-on-surface sm:text-[28px]">
           {currentQuestion.question}
         </h2>
-        {showHint && !examMode && (
-          <p className="border-l-2 border-primary-container pl-4 text-sm italic text-on-surface-variant">
-            İpucu: Doğru cevap “{currentQuestion.answer.slice(0, 2)}…” ile
-            başlıyor.
-          </p>
-        )}
       </section>
 
       <div className="grid grid-cols-1 gap-3">
@@ -273,7 +263,7 @@ export default function Quiz({
         })}
       </div>
 
-      <div className="mt-8 flex flex-col gap-2">
+      <div className="mt-8">
         <button
           type="button"
           disabled={!isAnswered}
@@ -285,15 +275,6 @@ export default function Quiz({
             : 'Sonraki Soru'}
           <span className="material-symbols-outlined">trending_flat</span>
         </button>
-        {!examMode && (
-          <button
-            type="button"
-            onClick={() => setShowHint(true)}
-            className="w-full rounded-full border-2 border-secondary/20 py-3 text-sm font-semibold text-secondary transition hover:bg-secondary/5"
-          >
-            Neredeyse buldum, ipucu göster
-          </button>
-        )}
       </div>
 
       {error && <p className="mt-3 text-center text-sm text-error">{error}</p>}

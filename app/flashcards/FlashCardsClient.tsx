@@ -6,9 +6,6 @@ import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import WordCard from '../components/WordCard';
 import StudyScopePicker from '../components/StudyScopePicker';
-import ScopeProgressBar, {
-  ScopeProgressView,
-} from '../components/ScopeProgressBar';
 import { useModule } from '../context/ModuleContext';
 import { useBadgeContext } from '../context/BadgeContext';
 
@@ -25,7 +22,6 @@ export default function FlashCardsClient() {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [scope, setScope] = useState<ScopeProgressView | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const { data: session } = useSession();
   const { selectedModuleId, selectedGroup, selectedGroupIndex, unlearnedOnly } =
@@ -51,28 +47,6 @@ export default function FlashCardsClient() {
       /* ignore */
     }
   }, [session]);
-
-  const refreshScope = useCallback(async () => {
-    if (!selectedModuleId || !selectedGroupIndex || !session) return;
-    try {
-      const res = await fetch(
-        `/api/progress/scope?moduleId=${selectedModuleId}&group=${selectedGroupIndex}`
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      setScope({
-        learned: data.learned,
-        total: data.total,
-        percentage: data.percentage,
-        label: data.label,
-        moduleLearned: data.moduleLearned,
-        moduleTotal: data.moduleTotal,
-        complete: data.complete,
-      });
-    } catch {
-      /* ignore */
-    }
-  }, [selectedModuleId, selectedGroupIndex, session]);
 
   useEffect(() => {
     void loadFavorites();
@@ -103,7 +77,6 @@ export default function FlashCardsClient() {
         if (!Array.isArray(data)) throw new Error('Geçersiz yanıt');
         setWords(data);
         setCurrentWordIndex(0);
-        void refreshScope();
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Hata');
       } finally {
@@ -111,7 +84,7 @@ export default function FlashCardsClient() {
       }
     };
     fetchWords();
-  }, [selectedModuleId, selectedGroupIndex, mode, refreshScope, unlearnedOnly]);
+  }, [selectedModuleId, selectedGroupIndex, mode, unlearnedOnly]);
 
   const goNext = () => {
     setCurrentWordIndex((i) => (i + 1 < words.length ? i + 1 : 0));
@@ -123,10 +96,6 @@ export default function FlashCardsClient() {
     <div className="app-shell flex flex-col py-4">
       <div className="mb-4">
         <StudyScopePicker />
-      </div>
-
-      <div className="mb-4">
-        <ScopeProgressBar progress={scope} showModule />
       </div>
 
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -195,7 +164,6 @@ export default function FlashCardsClient() {
           onProgressSaved={() => {
             void refreshBadges();
             if (mode !== 'practice') {
-              void refreshScope();
               window.dispatchEvent(new Event('yds-scope-progress'));
             }
           }}
