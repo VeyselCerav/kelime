@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/scroll-lock';
+import { resolveWordImageUrl } from '@/lib/word-image-url';
 
 /** Ekran genişliğinin ~%22’si; min 72 / max 140 */
 function swipeThreshold(): number {
@@ -409,6 +410,12 @@ export default function WordCard({
   const threshold = swipeThreshold();
   const learnedHint = Math.min(1, Math.max(0, offsetX / threshold));
   const unlearnedHint = Math.min(1, Math.max(0, -offsetX / threshold));
+  const bgImage = resolveWordImageUrl(imageUrl);
+  const [bgFailed, setBgFailed] = useState(false);
+
+  useEffect(() => {
+    setBgFailed(false);
+  }, [imageUrl, wordId]);
 
   return (
     <div className="flex w-full flex-col items-center">
@@ -465,31 +472,34 @@ export default function WordCard({
           >
             <div
               className={`flashcard-face relative flex flex-col items-center justify-center overflow-hidden rounded-card border border-outline-variant p-6 shadow-soft ${
-                imageUrl ? 'bg-[#1a2420]' : 'paper-texture'
+                bgImage && !bgFailed ? 'bg-[#1a2420]' : 'paper-texture'
               }`}
             >
-              {imageUrl && (
+              {bgImage && !bgFailed && (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={imageUrl}
+                    src={bgImage}
                     alt=""
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                     draggable={false}
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={() => setBgFailed(true)}
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-black/55 to-black/65" />
                 </>
               )}
               <h1
                 className={`relative z-10 mt-8 text-center font-display text-4xl font-bold italic sm:text-5xl ${
-                  imageUrl ? 'text-white drop-shadow-md' : 'text-primary'
+                  bgImage && !bgFailed ? 'text-white drop-shadow-md' : 'text-primary'
                 }`}
               >
                 {english}
               </h1>
               <div
                 className={`absolute bottom-4 z-10 flex items-center gap-1 ${
-                  imageUrl ? 'text-white/70' : 'text-on-surface-variant/50'
+                  bgImage && !bgFailed ? 'text-white/70' : 'text-on-surface-variant/50'
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">
@@ -501,31 +511,34 @@ export default function WordCard({
 
             <div
               className={`flashcard-face flashcard-back relative flex flex-col items-center justify-center overflow-hidden rounded-card border border-outline-variant p-6 text-center shadow-soft ${
-                imageUrl ? 'bg-[#1a2420]' : 'paper-texture'
+                bgImage && !bgFailed ? 'bg-[#1a2420]' : 'paper-texture'
               }`}
             >
-              {imageUrl && (
+              {bgImage && !bgFailed && (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={imageUrl}
+                    src={bgImage}
                     alt=""
                     className="pointer-events-none absolute inset-0 h-full w-full scale-105 object-cover blur-[2px]"
                     draggable={false}
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={() => setBgFailed(true)}
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-black/65 to-black/75" />
                 </>
               )}
               <div
                 className={`relative z-10 mb-4 rounded-full border-2 px-4 py-1 ${
-                  imageUrl
+                  bgImage && !bgFailed
                     ? 'border-white/50'
                     : 'border-primary-container'
                 }`}
               >
                 <span
                   className={`text-xs font-bold uppercase tracking-widest ${
-                    imageUrl ? 'text-white/90' : 'text-primary'
+                    bgImage && !bgFailed ? 'text-white/90' : 'text-primary'
                   }`}
                 >
                   Anlam
@@ -533,14 +546,14 @@ export default function WordCard({
               </div>
               <h2
                 className={`relative z-10 mb-3 font-display text-2xl font-bold sm:text-3xl ${
-                  imageUrl ? 'text-white drop-shadow-md' : 'text-on-surface'
+                  bgImage && !bgFailed ? 'text-white drop-shadow-md' : 'text-on-surface'
                 }`}
               >
                 {turkish}
               </h2>
               <p
                 className={`relative z-10 max-w-[240px] text-sm italic ${
-                  imageUrl ? 'text-white/75' : 'text-secondary'
+                  bgImage && !bgFailed ? 'text-white/75' : 'text-secondary'
                 }`}
               >
                 {english}

@@ -1,5 +1,5 @@
 /* YDS Monster — minimal SW (kurulum / offline iskeleti) */
-const CACHE = 'yds-monster-v2';
+const CACHE = 'yds-monster-v3';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -21,19 +21,27 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
 
-  // API ve auth her zaman ağdan
   const url = new URL(request.url);
+
+  // Dış CDN (R2 vb.) isteklerine dokunma — mobilde kırık görsel yapıyordu
+  if (url.origin !== self.location.origin) return;
+
   if (url.pathname.startsWith('/api/')) return;
 
   event.respondWith(
     fetch(request)
       .then((response) => {
         const copy = response.clone();
-        if (response.ok && (request.destination === 'document' || request.destination === 'image')) {
+        if (
+          response.ok &&
+          (request.destination === 'document' || request.destination === 'image')
+        ) {
           caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
         }
         return response;
       })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
+      .catch(() =>
+        caches.match(request).then((cached) => cached || caches.match('/'))
+      )
   );
 });
