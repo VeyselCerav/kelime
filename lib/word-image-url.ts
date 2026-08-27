@@ -1,7 +1,16 @@
+/**
+ * Kelime kartı arka plan görselleri.
+ * DB’deki imageUrl korunur; UI’da göstermek için NEXT_PUBLIC_WORD_CARD_IMAGES=1
+ */
+export const WORD_CARD_IMAGES_ENABLED =
+  process.env.NEXT_PUBLIC_WORD_CARD_IMAGES === '1' ||
+  process.env.NEXT_PUBLIC_WORD_CARD_IMAGES === 'true';
+
 /** Harici CDN (R2/Blob) URL → same-origin /word-images/… (mobil SW uyumu). */
 export function resolveWordImageUrl(
   url: string | null | undefined
 ): string | null {
+  if (!WORD_CARD_IMAGES_ENABLED) return null;
   if (!url?.trim()) return null;
   const u = url.trim();
   if (u.startsWith('/word-images/')) return u;
