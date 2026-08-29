@@ -1,10 +1,10 @@
 /**
  * Kelime kartı arka plan görselleri.
- * DB’deki imageUrl korunur; UI’da göstermek için NEXT_PUBLIC_WORD_CARD_IMAGES=1
+ * DB’de imageUrl varsa gösterilir. Kapatmak için NEXT_PUBLIC_WORD_CARD_IMAGES=0
  */
 export const WORD_CARD_IMAGES_ENABLED =
-  process.env.NEXT_PUBLIC_WORD_CARD_IMAGES === '1' ||
-  process.env.NEXT_PUBLIC_WORD_CARD_IMAGES === 'true';
+  process.env.NEXT_PUBLIC_WORD_CARD_IMAGES !== '0' &&
+  process.env.NEXT_PUBLIC_WORD_CARD_IMAGES !== 'false';
 
 /** Kart yüzü aspect-[3/4] ile aynı — görsel dosya boyutu */
 export const WORD_CARD_IMAGE_WIDTH = 600;
