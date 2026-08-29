@@ -25,6 +25,8 @@ interface WordCardProps {
   showPronounce?: boolean;
   /** Çağrıştırıcı arka plan görseli */
   imageUrl?: string | null;
+  /** Kart görseli yalnızca en-sik-cikan modülünde */
+  moduleSlug?: string | null;
 }
 
 function speakEnglish(text: string) {
@@ -69,6 +71,7 @@ export default function WordCard({
   onFavoriteChange,
   showPronounce = false,
   imageUrl,
+  moduleSlug,
 }: WordCardProps) {
   const { data: session } = useSession();
   const [isFlipped, setIsFlipped] = useState(false);
@@ -410,7 +413,7 @@ export default function WordCard({
   const threshold = swipeThreshold();
   const learnedHint = Math.min(1, Math.max(0, offsetX / threshold));
   const unlearnedHint = Math.min(1, Math.max(0, -offsetX / threshold));
-  const bgImage = resolveWordImageUrl(imageUrl);
+  const bgImage = resolveWordImageUrl(imageUrl, moduleSlug);
   const [bgFailed, setBgFailed] = useState(false);
 
   useEffect(() => {

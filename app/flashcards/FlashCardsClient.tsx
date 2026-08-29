@@ -26,7 +26,7 @@ export default function FlashCardsClient() {
   const [error, setError] = useState('');
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const { data: session } = useSession();
-  const { selectedModuleId, selectedGroup, selectedGroupIndex, unlearnedOnly } =
+  const { selectedModuleId, selectedModule, selectedGroup, selectedGroupIndex, unlearnedOnly } =
     useModule();
   const { refreshBadges } = useBadgeContext();
   const searchParams = useSearchParams();
@@ -174,6 +174,7 @@ export default function FlashCardsClient() {
           turkish={current.turkish}
           wordId={Number(current.id)}
           imageUrl={current.imageUrl}
+          moduleSlug={selectedModule?.slug}
           isAuthenticated={!!session}
           isFavorite={favoriteIds.has(Number(current.id))}
           onFavoriteChange={(id, favorited) => {

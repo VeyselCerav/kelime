@@ -55,6 +55,7 @@ export async function GET(request: Request) {
             turkish: true,
             moduleId: true,
             imageUrl: true,
+            module: { select: { slug: true } },
           },
         },
       },
@@ -67,6 +68,7 @@ export async function GET(request: Request) {
       turkish: r.word.turkish,
       moduleId: r.word.moduleId,
       imageUrl: r.word.imageUrl,
+      moduleSlug: r.word.module.slug,
       learnedAt: r.updatedAt,
       day: dayKey(r.updatedAt),
     }));
