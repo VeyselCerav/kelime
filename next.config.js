@@ -17,9 +17,6 @@ const nextConfig = {
   optimizeFonts: true,
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'bcrypt'],
-    outputFileTracingExcludes: {
-      '*': ['node_modules/sharp/**', 'node_modules/@img/**'],
-    },
   },
   env: {
     REGION: 'eu-central-1'
