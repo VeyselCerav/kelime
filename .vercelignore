@@ -1,0 +1,5 @@
+.env
+.env.local
+public/ensik-gemini
+public/word-images
+imageCollector

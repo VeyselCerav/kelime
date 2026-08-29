@@ -1,17 +1,10 @@
 /**
- * public/word-images/{id}.jpg → Cloudflare R2 (public CDN) + DB imageUrl.
- *
- * Gerekli env (.env.local):
- *   R2_ACCOUNT_ID=
- *   R2_ACCESS_KEY_ID=
- *   R2_SECRET_ACCESS_KEY=
- *   R2_BUCKET=yds-monster-word-images
- *   R2_PUBLIC_BASE_URL=https://pub-xxxxx.r2.dev   (veya özel domain)
+ * Kelime görsellerini Cloudflare R2'ye yükle + DB imageUrl güncelle.
  *
  * zsh:
  *   npm run upload-word-images-r2
+ *   npm run upload-word-images-r2 -- --source=ensik-gemini
  *   npm run upload-word-images-r2 -- --concurrency=16 --force
- *   npm run upload-word-images-r2 -- --limit=20 --dry-run
  */
 import { PrismaClient } from '@prisma/client';
 import { withAccelerate } from '@prisma/extension-accelerate';
@@ -23,6 +16,7 @@ import {
 } from '@aws-sdk/client-s3';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ENSIK_GEMINI_PUBLIC_DIR, PROMPT_TAG, GEMINI_GRID_PROMPT_TAG, COMFY_PROMPT_TAG } from '../lib/ensik-gemini';
 
 const prisma = new PrismaClient().$extends(withAccelerate());
 
@@ -123,7 +117,16 @@ async function main() {
     }
   }
 
-  const dir = path.join(process.cwd(), 'public', 'word-images');
+  const source = argValue('source')?.trim() || 'word-images';
+  const isEnsik = source === 'ensik-gemini';
+  const localSubdir = isEnsik ? ENSIK_GEMINI_PUBLIC_DIR : 'word-images';
+  const r2Prefix = isEnsik ? ENSIK_GEMINI_PUBLIC_DIR : 'word-images';
+
+  const dir = path.join(process.cwd(), 'public', localSubdir);
+  if (!fs.existsSync(dir)) {
+    throw new Error(`Klasör yok: public/${localSubdir}`);
+  }
+
   const files = fs
     .readdirSync(dir)
     .filter((f) => /^\d+\.jpe?g$/i.test(f))
@@ -131,24 +134,50 @@ async function main() {
 
   const already = new Set<number>();
   if (!force) {
+    const cdnNeedle = publicBase.replace(/^https?:\/\//, '');
     const rows = await prisma.word.findMany({
-      where: {
-        OR: [
-          { imageUrl: { contains: 'r2.dev' } },
-          { imageUrl: { contains: publicBase.replace(/^https?:\/\//, '') } },
-        ],
-      },
+      where: isEnsik
+        ? {
+            AND: [
+              {
+                OR: [
+                  { imagePrompt: { startsWith: PROMPT_TAG } },
+                  { imagePrompt: { startsWith: GEMINI_GRID_PROMPT_TAG } },
+                  { imagePrompt: { startsWith: COMFY_PROMPT_TAG } },
+                ],
+              },
+              {
+                OR: [
+                  { imageUrl: { contains: 'r2.dev' } },
+                  { imageUrl: { contains: cdnNeedle } },
+                ],
+              },
+            ],
+          }
+        : {
+            OR: [
+              { imageUrl: { contains: 'r2.dev' } },
+              { imageUrl: { contains: cdnNeedle } },
+            ],
+            NOT: {
+              OR: [
+                { imagePrompt: { startsWith: PROMPT_TAG } },
+                { imagePrompt: { startsWith: GEMINI_GRID_PROMPT_TAG } },
+                { imagePrompt: { startsWith: COMFY_PROMPT_TAG } },
+              ],
+            },
+          },
       select: { id: true },
     });
     for (const r of rows) already.add(r.id);
-    console.log(`Zaten R2 URL: ${already.size}`);
+    console.log(`Zaten R2 URL (${source}): ${already.size}`);
   }
 
   let selected = files.filter((f) => force || !already.has(parseInt(f, 10)));
   if (limit != null) selected = selected.slice(0, limit);
 
   console.log(
-    `${selected.length} dosya → R2/${bucket} (concurrency=${concurrency}${
+    `${selected.length} dosya → R2/${bucket}/${r2Prefix} (source=${source}, concurrency=${concurrency}${
       dryRun ? ', dry-run' : ''
     })`
   );
@@ -160,7 +189,7 @@ async function main() {
 
   await mapPool(selected, concurrency, async (fname, idx) => {
     const id = parseInt(fname, 10);
-    const key = `word-images/${fname}`;
+    const key = `${r2Prefix}/${fname}`;
     const localPath = path.join(dir, fname);
     const url = publicUrl(publicBase, key);
 
@@ -210,7 +239,7 @@ async function main() {
       1000
     ).toFixed(0)}s`
   );
-  console.log(`Örnek URL: ${publicUrl(publicBase, 'word-images/25.jpg')}`);
+  console.log(`Örnek URL: ${publicUrl(publicBase, `${r2Prefix}/25.jpg`)}`);
 }
 
 main()

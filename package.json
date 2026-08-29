@@ -13,10 +13,17 @@
     "import-tense": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/import-tense.ts",
     "import-level": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/import-level.ts",
     "generate-word-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/generate-word-images.ts",
+    "generate-ensik-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/generate-ensik-images.ts",
+    "generate-ensik-images-comfy": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/generate-ensik-images-comfy.ts",
+    "apply-ensik-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/apply-ensik-images.ts",
+    "export-ensik-group": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/export-ensik-group.ts",
+    "export-ensik-all": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/export-ensik-all.ts",
+    "export-ensik-words": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/export-ensik-words.ts",
+    "split-ensik-grid": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/split-ensik-grid.ts",
+    "resize-ensik-card-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/resize-ensik-card-images.ts",
     "export-image-words": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/export-image-words.ts",
     "apply-word-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/apply-word-images.ts",
     "upload-word-images-blob": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/upload-word-images-blob.ts",
-    "upload-word-images-r2": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/upload-word-images-r2.ts",
     "upload-word-images-r2": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/upload-word-images-r2.ts"
   },
   "prisma": {
@@ -41,7 +48,8 @@
     "nodemailer": "^6.10.1",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

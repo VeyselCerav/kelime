@@ -16,16 +16,21 @@ const nextConfig = {
   compress: true,
   optimizeFonts: true,
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'bcrypt']
+    serverComponentsExternalPackages: ['@prisma/client', 'bcrypt'],
   },
   env: {
     REGION: 'eu-central-1'
   },
   async rewrites() {
+    const base = r2Public.replace(/\/$/, '');
     return [
       {
+        source: '/ensik-gemini/:path*',
+        destination: `${base}/ensik-gemini/:path*`,
+      },
+      {
         source: '/word-images/:path*',
-        destination: `${r2Public.replace(/\/$/, '')}/word-images/:path*`,
+        destination: `${base}/word-images/:path*`,
       },
     ];
   },
