@@ -33,6 +33,10 @@ const nextConfig = {
         destination: `${base}/seviye-gemini/:path*`,
       },
       {
+        source: '/modul-gemini/:path*',
+        destination: `${base}/modul-gemini/:path*`,
+      },
+      {
         source: '/word-images/:path*',
         destination: `${base}/word-images/:path*`,
       },

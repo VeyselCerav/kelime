@@ -2,6 +2,8 @@
 .env.local
 public/ensik-gemini
 public/seviye-gemini
+public/modul-gemini
 public/seviyeseviyebutun
+public/imagesnew
 public/word-images
 imageCollector

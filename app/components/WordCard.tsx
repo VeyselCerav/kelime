@@ -25,7 +25,7 @@ interface WordCardProps {
   showPronounce?: boolean;
   /** Çağrıştırıcı arka plan görseli */
   imageUrl?: string | null;
-  /** Kart görseli: en-sik-cikan ve seviye-seviye */
+  /** Kart görseli: tüm görsel destekli modüller */
   moduleSlug?: string | null;
 }
 

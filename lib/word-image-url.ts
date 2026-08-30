@@ -14,6 +14,11 @@ export const WORD_CARD_IMAGE_HEIGHT = 800;
 export const WORD_CARD_IMAGE_MODULE_SLUGS = new Set([
   'en-sik-cikan',
   'seviye-seviye',
+  'genel',
+  'en-cok-cikan-verb',
+  'en-sik-cikan-sifatlar',
+  'en-sik-cikan-adverbs',
+  'tense-anahtar',
 ]);
 
 /** Harici CDN (R2) URL → same-origin proxy (mobil SW uyumu). */
@@ -27,12 +32,16 @@ export function resolveWordImageUrl(
   const u = url.trim();
   if (u.startsWith('/ensik-gemini/')) return u;
   if (u.startsWith('/seviye-gemini/')) return u;
+  if (u.startsWith('/modul-gemini/')) return u;
 
   const ensik = u.match(/\/ensik-gemini\/(\d+\.jpe?g)(?:\?.*)?$/i);
   if (ensik) return `/ensik-gemini/${ensik[1]}`;
 
   const seviye = u.match(/\/seviye-gemini\/(\d+\.jpe?g)(?:\?.*)?$/i);
   if (seviye) return `/seviye-gemini/${seviye[1]}`;
+
+  const modul = u.match(/\/modul-gemini\/(\d+\.jpe?g)(?:\?.*)?$/i);
+  if (modul) return `/modul-gemini/${modul[1]}`;
 
   return null;
 }
