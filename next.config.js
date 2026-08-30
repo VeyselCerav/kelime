@@ -29,6 +29,10 @@ const nextConfig = {
         destination: `${base}/ensik-gemini/:path*`,
       },
       {
+        source: '/seviye-gemini/:path*',
+        destination: `${base}/seviye-gemini/:path*`,
+      },
+      {
         source: '/word-images/:path*',
         destination: `${base}/word-images/:path*`,
       },

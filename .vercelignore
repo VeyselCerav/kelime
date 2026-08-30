@@ -1,5 +1,7 @@
 .env
 .env.local
 public/ensik-gemini
+public/seviye-gemini
+public/seviyeseviyebutun
 public/word-images
 imageCollector

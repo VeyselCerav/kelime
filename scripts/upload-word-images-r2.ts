@@ -17,6 +17,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { ENSIK_GEMINI_PUBLIC_DIR, PROMPT_TAG, GEMINI_GRID_PROMPT_TAG, COMFY_PROMPT_TAG } from '../lib/ensik-gemini';
+import { SEVIYE_GEMINI_PUBLIC_DIR } from '../lib/seviye-gemini';
 
 const prisma = new PrismaClient().$extends(withAccelerate());
 
@@ -119,8 +120,13 @@ async function main() {
 
   const source = argValue('source')?.trim() || 'word-images';
   const isEnsik = source === 'ensik-gemini';
-  const localSubdir = isEnsik ? ENSIK_GEMINI_PUBLIC_DIR : 'word-images';
-  const r2Prefix = isEnsik ? ENSIK_GEMINI_PUBLIC_DIR : 'word-images';
+  const isSeviye = source === 'seviye-gemini';
+  const localSubdir = isEnsik
+    ? ENSIK_GEMINI_PUBLIC_DIR
+    : isSeviye
+      ? SEVIYE_GEMINI_PUBLIC_DIR
+      : 'word-images';
+  const r2Prefix = localSubdir;
 
   const dir = path.join(process.cwd(), 'public', localSubdir);
   if (!fs.existsSync(dir)) {
@@ -154,6 +160,18 @@ async function main() {
               },
             ],
           }
+        : isSeviye
+          ? {
+              AND: [
+                { imageUrl: { contains: SEVIYE_GEMINI_PUBLIC_DIR } },
+                {
+                  OR: [
+                    { imageUrl: { contains: 'r2.dev' } },
+                    { imageUrl: { contains: cdnNeedle } },
+                  ],
+                },
+              ],
+            }
         : {
             OR: [
               { imageUrl: { contains: 'r2.dev' } },
