@@ -9,6 +9,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import { IRREGULAR_VERBS_SLUG } from '@/lib/irregular-verbs';
 import { isOdevSlug } from '@/lib/odev';
 import { canAccessModule } from '@/lib/module-access';
+import { buildUniqueOptions } from '@/lib/quiz-options';
 
 export async function GET(request: Request) {
   try {
@@ -134,21 +135,10 @@ export async function GET(request: Request) {
       if (isIrregular && word.pastSimple && word.pastParticiple) {
         const askV2 = Math.random() < 0.5;
         const answer = askV2 ? word.pastSimple : word.pastParticiple;
-        const otherWords = pool.filter((w) => w.id !== word.id);
-        const wrongAnswers = [...otherWords]
-          .sort(() => Math.random() - 0.5)
-          .map((w) => (askV2 ? w.pastSimple : w.pastParticiple))
-          .filter((f): f is string => Boolean(f && f !== answer))
-          .filter((f, i, arr) => arr.indexOf(f) === i)
-          .slice(0, 3);
-
-        while (wrongAnswers.length < 3) {
-          wrongAnswers.push(`opt${wrongAnswers.length}`);
-        }
-
-        const options = [...wrongAnswers.slice(0, 3), answer].sort(
-          () => Math.random() - 0.5
-        );
+        const distractors = pool
+          .filter((w) => w.id !== word.id)
+          .map((w) => (askV2 ? w.pastSimple : w.pastParticiple) || '');
+        const options = buildUniqueOptions(answer, distractors, 3, true);
 
         return {
           id: word.id,
@@ -161,21 +151,10 @@ export async function GET(request: Request) {
         };
       }
 
-      const otherWords = pool.filter((w) => w.id !== word.id);
-      const wrongAnswers = [...otherWords]
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 3)
-        .map((w) => w.turkish);
-
-      while (wrongAnswers.length < 3 && otherWords.length > wrongAnswers.length) {
-        const extra = otherWords.find((w) => !wrongAnswers.includes(w.turkish));
-        if (!extra) break;
-        wrongAnswers.push(extra.turkish);
-      }
-
-      const options = [...wrongAnswers.slice(0, 3), word.turkish].sort(
-        () => Math.random() - 0.5
-      );
+      const distractors = pool
+        .filter((w) => w.id !== word.id)
+        .map((w) => w.turkish || '');
+      const options = buildUniqueOptions(word.turkish, distractors, 3);
 
       return {
         id: word.id,

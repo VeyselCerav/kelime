@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { buildUniqueOptions } from '@/lib/quiz-options';
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -68,27 +69,15 @@ export async function GET(request: Request) {
     const selected = shuffle(learnedWords).slice(0, count);
 
     const questions = selected.map((word) => {
-      const wrong = shuffle(
-        pool.filter((w) => w.id !== word.id && w.turkish !== word.turkish)
-      )
-        .slice(0, 3)
-        .map((w) => w.turkish);
-
-      while (wrong.length < 3) {
-        const alt = learnedWords.find(
-          (w) =>
-            w.id !== word.id &&
-            w.turkish !== word.turkish &&
-            !wrong.includes(w.turkish)
-        );
-        if (!alt) break;
-        wrong.push(alt.turkish);
-      }
+      const distractors = pool
+        .filter((w) => w.id !== word.id)
+        .map((w) => w.turkish || '');
+      const options = buildUniqueOptions(word.turkish, distractors, 3);
 
       return {
         id: word.id,
         question: `"${word.english}" kelimesinin Türkçe anlamı nedir?`,
-        options: shuffle([...wrong.slice(0, 3), word.turkish]),
+        options,
         answer: word.turkish,
         wordId: word.id,
       };

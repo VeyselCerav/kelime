@@ -12,6 +12,7 @@ import { getLockedScrollY, pinWindowScroll } from '@/lib/scroll-lock';
 import { IRREGULAR_VERBS_SLUG } from '@/lib/irregular-verbs';
 import { isTenseAnahtarSlug } from '@/lib/tense-quiz';
 import { isOdevSlug } from '@/lib/odev';
+import { buildUniqueOptions } from '@/lib/quiz-options';
 import TenseQuizMode from '../components/TenseQuizMode';
 
 interface Question {
@@ -38,19 +39,10 @@ interface IrregularWord {
 function buildPracticeQuestions(words: PracticeWord[]): Question[] {
   const pool = words.length >= 4 ? words : words;
   return words.map((word) => {
-    const others = pool.filter((w) => w.id !== word.id);
-    const wrong = [...others]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-      .map((w) => w.turkish);
-    while (wrong.length < 3 && others.length > wrong.length) {
-      const extra = others.find((w) => !wrong.includes(w.turkish));
-      if (!extra) break;
-      wrong.push(extra.turkish);
-    }
-    const options = [...wrong.slice(0, 3), word.turkish].sort(
-      () => Math.random() - 0.5
-    );
+    const distractors = pool
+      .filter((w) => w.id !== word.id)
+      .map((w) => w.turkish || '');
+    const options = buildUniqueOptions(word.turkish, distractors, 3);
     return {
       id: word.id,
       question: `"${word.english}" kelimesinin Türkçe anlamı nedir?`,

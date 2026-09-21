@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { sanitizeQuizOptions } from '@/lib/quiz-options';
 
 export interface QuizQuestion {
   id: number;
@@ -59,6 +60,13 @@ export default function Quiz({
   const savedRef = useRef(false);
 
   const currentQuestion = questions[currentQuestionIndex];
+  const displayOptions = useMemo(
+    () =>
+      currentQuestion
+        ? sanitizeQuizOptions(currentQuestion.options, currentQuestion.answer)
+        : [],
+    [currentQuestion]
+  );
   const isFavorite = currentQuestion
     ? favoriteIds.has(currentQuestion.wordId)
     : false;
@@ -370,14 +378,14 @@ export default function Quiz({
       </section>
 
       <div className="grid grid-cols-1 gap-3">
-        {currentQuestion.options.map((option) => {
+        {displayOptions.map((option, index) => {
           const selected = selectedAnswer === option;
           const correct = isAnswered && option === currentQuestion.answer;
           const wrong =
             isAnswered && selected && option !== currentQuestion.answer;
           return (
             <button
-              key={option}
+              key={`${index}-${option}`}
               type="button"
               onClick={() => handleAnswerSelect(option)}
               className={`btn-tactile flex w-full items-center justify-between rounded-[20px] border p-5 text-left transition ${
