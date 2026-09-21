@@ -16,10 +16,23 @@ const nextConfig = {
   compress: true,
   optimizeFonts: true,
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'bcrypt'],
+    serverComponentsExternalPackages: ['@prisma/client', 'bcrypt', 'web-push'],
   },
   env: {
     REGION: 'eu-central-1'
+  },
+  async headers() {
+    return [
+      {
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+    ];
   },
   async rewrites() {
     const base = r2Public.replace(/\/$/, '');

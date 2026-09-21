@@ -6,6 +6,9 @@ import { findWordsForGroup } from '@/lib/module-groups';
 import { weightedShuffle } from '@/lib/study-queue';
 import { filterUnlearnedOrFallback } from '@/lib/unlearned-filter';
 import { authOptions } from '../auth/[...nextauth]/route';
+import { IRREGULAR_VERBS_SLUG } from '@/lib/irregular-verbs';
+import { isOdevSlug } from '@/lib/odev';
+import { canAccessModule } from '@/lib/module-access';
 
 export async function GET(request: Request) {
   try {
@@ -18,15 +21,46 @@ export async function GET(request: Request) {
     const unlearnedOnly = searchParams.get('unlearned') === '1';
 
     let moduleId: number | undefined;
+    let resolvedSlug: string | null = moduleSlug;
     if (moduleIdParam) {
       moduleId = parseInt(moduleIdParam, 10);
+      if (!resolvedSlug && moduleId) {
+        const mod = await prisma.module.findUnique({
+          where: { id: moduleId },
+          select: { slug: true },
+        });
+        resolvedSlug = mod?.slug ?? null;
+      }
     } else if (moduleSlug) {
       const mod = await prisma.module.findUnique({ where: { slug: moduleSlug } });
       if (!mod) {
         return NextResponse.json({ error: 'Modül bulunamadı' }, { status: 404 });
       }
       moduleId = mod.id;
+      resolvedSlug = mod.slug;
     }
+
+    const sessionEarly = await getServerSession(authOptions);
+    const accessUid = sessionEarly?.user?.id
+      ? parseInt(sessionEarly.user.id, 10)
+      : null;
+    if (moduleId) {
+      const allowed = await canAccessModule({
+        moduleId,
+        user: accessUid
+          ? {
+              id: accessUid,
+              isAdmin: Boolean(sessionEarly?.user?.isAdmin),
+            }
+          : null,
+      });
+      if (!allowed) {
+        return NextResponse.json({ error: 'Bu modüle erişim yok' }, { status: 403 });
+      }
+    }
+
+    const isIrregular = resolvedSlug === IRREGULAR_VERBS_SLUG;
+    const preserveOrder = isOdevSlug(resolvedSlug);
 
     let words;
     if (groupParam && moduleId) {
@@ -43,8 +77,8 @@ export async function GET(request: Request) {
       });
     }
 
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.id ? parseInt(session.user.id, 10) : null;
+    const session = sessionEarly;
+    const userId = accessUid;
 
     if (unlearnedOnly) {
       const filtered = await filterUnlearnedOrFallback(words, userId, true, 4);
@@ -63,9 +97,13 @@ export async function GET(request: Request) {
       });
       learnedSet = new Set(learned.map((l) => l.wordId));
     }
-    words = weightedShuffle(
-      words.map((w) => ({ ...w, isLearned: learnedSet.has(w.id) }))
-    );
+    const withFlags = words.map((w) => ({
+      ...w,
+      isLearned: learnedSet.has(w.id),
+    }));
+    words = preserveOrder
+      ? [...withFlags].sort((a, b) => a.id - b.id)
+      : weightedShuffle(withFlags);
 
     const distractorPool =
       moduleId && words.length < 8
@@ -93,6 +131,36 @@ export async function GET(request: Request) {
     }
 
     const questions = words.map((word) => {
+      if (isIrregular && word.pastSimple && word.pastParticiple) {
+        const askV2 = Math.random() < 0.5;
+        const answer = askV2 ? word.pastSimple : word.pastParticiple;
+        const otherWords = pool.filter((w) => w.id !== word.id);
+        const wrongAnswers = [...otherWords]
+          .sort(() => Math.random() - 0.5)
+          .map((w) => (askV2 ? w.pastSimple : w.pastParticiple))
+          .filter((f): f is string => Boolean(f && f !== answer))
+          .filter((f, i, arr) => arr.indexOf(f) === i)
+          .slice(0, 3);
+
+        while (wrongAnswers.length < 3) {
+          wrongAnswers.push(`opt${wrongAnswers.length}`);
+        }
+
+        const options = [...wrongAnswers.slice(0, 3), answer].sort(
+          () => Math.random() - 0.5
+        );
+
+        return {
+          id: word.id,
+          question: askV2
+            ? `"${word.english}" fiilinin past simple (V2) hâli nedir?`
+            : `"${word.english}" fiilinin past participle (V3) hâli nedir?`,
+          options,
+          answer,
+          wordId: word.id,
+        };
+      }
+
       const otherWords = pool.filter((w) => w.id !== word.id);
       const wrongAnswers = [...otherWords]
         .sort(() => Math.random() - 0.5)
@@ -118,9 +186,13 @@ export async function GET(request: Request) {
       };
     });
 
-    const shuffledQuestions = [...questions]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, Math.min(limit, questions.length));
+    const orderedQuestions = preserveOrder
+      ? questions
+      : [...questions].sort(() => Math.random() - 0.5);
+    const shuffledQuestions = orderedQuestions.slice(
+      0,
+      Math.min(limit, orderedQuestions.length)
+    );
 
     return NextResponse.json(shuffledQuestions);
   } catch (error) {

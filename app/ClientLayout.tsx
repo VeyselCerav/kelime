@@ -7,6 +7,7 @@ import { BadgeProvider } from './context/BadgeContext';
 import BottomNav from './components/BottomNav';
 import TopAppBar from './components/TopAppBar';
 import AdminTopNav from './components/AdminTopNav';
+import PromoLoginTracker from './components/PromoLoginTracker';
 
 const bareRoutes = ['/login', '/register'];
 const authRoutes = ['/auth'];
@@ -53,6 +54,7 @@ export default function ClientLayout({
           {!isAdmin && <TopAppBar />}
           {isAdmin && <AdminTopNav />}
           <main className={`flex-1 ${!isAdmin ? 'pb-28 pt-2' : 'pb-8'}`}>
+            <PromoLoginTracker />
             {children}
           </main>
           {!isAdmin && <BottomNav />}

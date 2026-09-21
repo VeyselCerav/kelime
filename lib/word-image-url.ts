@@ -19,7 +19,21 @@ export const WORD_CARD_IMAGE_MODULE_SLUGS = new Set([
   'en-sik-cikan-sifatlar',
   'en-sik-cikan-adverbs',
   'tense-anahtar',
+  'irregular-verbs',
+  'phrasal-verbs',
+  'odev',
 ]);
+
+/**
+ * Görsel URL sürümü — R2 immutable cache kırıcı.
+ * Görseller yenilendiğinde artır.
+ */
+export const WORD_IMAGE_CACHE_VERSION = '11';
+
+function withImageCacheBust(path: string): string {
+  const sep = path.includes('?') ? '&' : '?';
+  return `${path}${sep}v=${WORD_IMAGE_CACHE_VERSION}`;
+}
 
 /** Harici CDN (R2) URL → same-origin proxy (mobil SW uyumu). */
 export function resolveWordImageUrl(
@@ -30,18 +44,25 @@ export function resolveWordImageUrl(
   if (moduleSlug && !WORD_CARD_IMAGE_MODULE_SLUGS.has(moduleSlug)) return null;
   if (!url?.trim()) return null;
   const u = url.trim();
-  if (u.startsWith('/ensik-gemini/')) return u;
-  if (u.startsWith('/seviye-gemini/')) return u;
-  if (u.startsWith('/modul-gemini/')) return u;
 
-  const ensik = u.match(/\/ensik-gemini\/(\d+\.jpe?g)(?:\?.*)?$/i);
-  if (ensik) return `/ensik-gemini/${ensik[1]}`;
+  let path: string | null = null;
+  if (u.startsWith('/ensik-gemini/')) path = u.split('?')[0];
+  else if (u.startsWith('/seviye-gemini/')) path = u.split('?')[0];
+  else if (u.startsWith('/modul-gemini/')) path = u.split('?')[0];
+  else {
+    // id.jpg veya id-v123456.jpg (cache-bust dosya adları)
+    const fileRe = '([\\w.-]+\\.jpe?g)';
+    const ensik = u.match(new RegExp(`/ensik-gemini/${fileRe}(?:\\?.*)?$`, 'i'));
+    if (ensik) path = `/ensik-gemini/${ensik[1]}`;
+    else {
+      const seviye = u.match(new RegExp(`/seviye-gemini/${fileRe}(?:\\?.*)?$`, 'i'));
+      if (seviye) path = `/seviye-gemini/${seviye[1]}`;
+      else {
+        const modul = u.match(new RegExp(`/modul-gemini/${fileRe}(?:\\?.*)?$`, 'i'));
+        if (modul) path = `/modul-gemini/${modul[1]}`;
+      }
+    }
+  }
 
-  const seviye = u.match(/\/seviye-gemini\/(\d+\.jpe?g)(?:\?.*)?$/i);
-  if (seviye) return `/seviye-gemini/${seviye[1]}`;
-
-  const modul = u.match(/\/modul-gemini\/(\d+\.jpe?g)(?:\?.*)?$/i);
-  if (modul) return `/modul-gemini/${modul[1]}`;
-
-  return null;
+  return path ? withImageCacheBust(path) : null;
 }

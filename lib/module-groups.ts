@@ -1,6 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { GROUP_SIZE, WordGroupInfo, buildGroups } from '@/lib/subgroups';
 import { mixWordsByLetter } from '@/lib/word-order';
+import {
+  isTenseAnahtarSlug,
+  orderTenseGroupWords,
+} from '@/lib/tense-quiz';
+import { isOdevSlug } from '@/lib/odev';
 
 export type GroupMode = 'fixed' | 'category';
 
@@ -56,18 +61,38 @@ export function buildModuleGroups(params: {
   };
 }
 
+function mixCategoryWords<
+  T extends { id: number; english: string; addedBy?: string | null },
+>(words: T[], moduleSlug?: string | null): T[] {
+  // Ödev: JSON id sırası korunur, harf karışımı yok
+  if (isOdevSlug(moduleSlug)) {
+    return [...words].sort((a, b) => a.id - b.id);
+  }
+  if (isTenseAnahtarSlug(moduleSlug)) {
+    return orderTenseGroupWords(words, mixWordsByLetter);
+  }
+  return mixWordsByLetter(words);
+}
+
 export function wordIdsForGroup(
-  words: { id: number; english: string; category: string | null }[],
+  words: {
+    id: number;
+    english: string;
+    category: string | null;
+    addedBy?: string | null;
+  }[],
   groupIndex: number,
   groupMode: GroupMode,
-  groups: WordGroupInfo[]
+  groups: WordGroupInfo[],
+  moduleSlug?: string | null
 ): number[] {
   const g = Math.max(1, groupIndex);
   if (groupMode === 'category') {
     const info = groups.find((x) => x.index === g);
     if (!info?.category) return [];
-    return mixWordsByLetter(
-      words.filter((w) => w.category === info.category)
+    return mixCategoryWords(
+      words.filter((w) => w.category === info.category),
+      moduleSlug
     ).map((w) => w.id);
   }
   const mixed = mixWordsByLetter(words);
@@ -110,8 +135,9 @@ export async function findWordsForGroup(params: {
     if (!info?.category) {
       return { words: [], meta };
     }
-    const result = mixWordsByLetter(
-      all.filter((w) => w.category === info.category)
+    const result = mixCategoryWords(
+      all.filter((w) => w.category === info.category),
+      mod.slug
     );
     return { words: result, meta };
   }

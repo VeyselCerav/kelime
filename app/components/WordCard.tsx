@@ -27,6 +27,14 @@ interface WordCardProps {
   imageUrl?: string | null;
   /** Kart görseli: tüm görsel destekli modüller */
   moduleSlug?: string | null;
+  /** false ise imageUrl olsa bile arka plan gösterme (Ödev switch) */
+  showCardImage?: boolean;
+  /** Irregular verbs: arka yüz V2 / V3 / anlam */
+  pastSimple?: string | null;
+  pastParticiple?: string | null;
+  /** Tense kartları: ön yüzde gramer başlığı + kural */
+  grammarTitle?: string | null;
+  grammarRule?: string | null;
 }
 
 function speakEnglish(text: string) {
@@ -72,6 +80,11 @@ export default function WordCard({
   showPronounce = false,
   imageUrl,
   moduleSlug,
+  showCardImage = true,
+  pastSimple,
+  pastParticiple,
+  grammarTitle,
+  grammarRule,
 }: WordCardProps) {
   const { data: session } = useSession();
   const [isFlipped, setIsFlipped] = useState(false);
@@ -413,7 +426,9 @@ export default function WordCard({
   const threshold = swipeThreshold();
   const learnedHint = Math.min(1, Math.max(0, offsetX / threshold));
   const unlearnedHint = Math.min(1, Math.max(0, -offsetX / threshold));
-  const bgImage = resolveWordImageUrl(imageUrl, moduleSlug);
+  const bgImage = showCardImage
+    ? resolveWordImageUrl(imageUrl, moduleSlug)
+    : null;
   const [bgFailed, setBgFailed] = useState(false);
 
   useEffect(() => {
@@ -498,8 +513,36 @@ export default function WordCard({
                   />
                 </>
               )}
+              {grammarTitle && (
+                <div
+                  className={`relative z-10 mb-4 max-w-[95%] text-center ${
+                    bgImage && !bgFailed ? 'word-card-image-text' : ''
+                  }`}
+                >
+                  <p
+                    className={`text-[11px] font-bold uppercase tracking-[0.14em] ${
+                      bgImage && !bgFailed ? 'text-white/85' : 'text-tertiary'
+                    }`}
+                  >
+                    {grammarTitle}
+                  </p>
+                  {grammarRule && (
+                    <p
+                      className={`mt-1.5 text-xs leading-snug sm:text-sm ${
+                        bgImage && !bgFailed
+                          ? 'text-white/75'
+                          : 'text-on-surface-variant'
+                      }`}
+                    >
+                      {grammarRule}
+                    </p>
+                  )}
+                </div>
+              )}
               <h1
-                className={`relative z-10 mt-8 text-center font-display text-4xl font-bold italic sm:text-5xl ${
+                className={`relative z-10 text-center font-display text-4xl font-bold italic sm:text-5xl ${
+                  grammarTitle ? 'mt-2' : 'mt-8'
+                } ${
                   bgImage && !bgFailed ? 'word-card-image-text' : 'text-primary'
                 }`}
               >
@@ -518,17 +561,48 @@ export default function WordCard({
             </div>
 
             <div className="flashcard-face flashcard-back paper-texture relative flex flex-col items-center justify-center overflow-hidden rounded-card border border-outline-variant p-6 text-center shadow-soft">
-              <div className="relative z-10 mb-4 rounded-full border-2 border-primary-container px-4 py-1">
-                <span className="text-xs font-bold uppercase tracking-widest text-primary">
-                  Anlam
-                </span>
-              </div>
-              <h2 className="relative z-10 mb-3 font-display text-2xl font-bold text-on-surface sm:text-3xl">
-                {turkish}
-              </h2>
-              <p className="relative z-10 max-w-[240px] text-sm italic text-secondary">
-                {english}
-              </p>
+              {pastSimple && pastParticiple ? (
+                <div className="relative z-10 w-full max-w-xs space-y-5">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-outline">
+                      V2 · Past simple
+                    </p>
+                    <p className="mt-1 font-display text-2xl font-bold text-primary sm:text-3xl">
+                      {pastSimple}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-outline">
+                      V3 · Past participle
+                    </p>
+                    <p className="mt-1 font-display text-2xl font-bold text-primary sm:text-3xl">
+                      {pastParticiple}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-outline">
+                      Anlam
+                    </p>
+                    <p className="mt-1 font-display text-xl font-semibold text-on-surface sm:text-2xl">
+                      {turkish}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="relative z-10 mb-4 rounded-full border-2 border-primary-container px-4 py-1">
+                    <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                      Anlam
+                    </span>
+                  </div>
+                  <h2 className="relative z-10 mb-3 font-display text-2xl font-bold text-on-surface sm:text-3xl">
+                    {turkish}
+                  </h2>
+                  <p className="relative z-10 max-w-[240px] text-sm italic text-secondary">
+                    {english}
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { computeScopeProgress } from '@/lib/group-progress';
 import { buildModuleGroups } from '@/lib/module-groups';
+import { canAccessModule } from '@/lib/module-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,14 @@ export async function GET(request: Request) {
     }
 
     const userId = parseInt(session.user.id, 10);
+    const allowed = await canAccessModule({
+      moduleId,
+      user: { id: userId, isAdmin: Boolean(session.user.isAdmin) },
+    });
+    if (!allowed) {
+      return NextResponse.json({ error: 'Bu modüle erişim yok' }, { status: 403 });
+    }
+
     const mod = await prisma.module.findUnique({ where: { id: moduleId } });
     if (!mod) {
       return NextResponse.json({ error: 'Modül bulunamadı' }, { status: 404 });

@@ -103,6 +103,17 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
       setModules(data);
 
       setSelectedModuleIdState((prev) => {
+        // Bildirim / derin link: ?module=odev
+        if (typeof window !== 'undefined') {
+          const slug = new URLSearchParams(window.location.search).get('module');
+          if (slug) {
+            const fromQuery = data.find((m) => m.slug === slug);
+            if (fromQuery) {
+              localStorage.setItem(STORAGE_MODULE, String(fromQuery.id));
+              return fromQuery.id;
+            }
+          }
+        }
         if (prev && data.some((m) => m.id === prev)) return prev;
         const stored =
           typeof window !== 'undefined'

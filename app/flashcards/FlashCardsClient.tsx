@@ -9,14 +9,26 @@ import StudyScopePicker from '../components/StudyScopePicker';
 import { useModule } from '../context/ModuleContext';
 import { useBadgeContext } from '../context/BadgeContext';
 import { getLockedScrollY, pinWindowScroll } from '@/lib/scroll-lock';
+import { IRREGULAR_VERBS_SLUG } from '@/lib/irregular-verbs';
+import { isOdevSlug } from '@/lib/odev';
+import OdevPushPrompt from '../components/OdevPushPrompt';
+import {
+  isTenseAnahtarSlug,
+  isTenseGrammarWord,
+  tenseRuleForCategory,
+} from '@/lib/tense-quiz';
 
 interface Word {
   id: number;
   english: string;
   turkish: string;
   moduleId: number;
+  category?: string | null;
+  addedBy?: string | null;
   isLearned?: boolean;
   imageUrl?: string | null;
+  pastSimple?: string | null;
+  pastParticiple?: string | null;
 }
 
 export default function FlashCardsClient() {
@@ -25,6 +37,8 @@ export default function FlashCardsClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  /** Ödev: her oturumda varsayılan açık (localStorage yok) */
+  const [odevImagesOn, setOdevImagesOn] = useState(true);
   const { data: session } = useSession();
   const { selectedModuleId, selectedModule, selectedGroup, selectedGroupIndex, unlearnedOnly } =
     useModule();
@@ -121,6 +135,19 @@ export default function FlashCardsClient() {
   };
 
   const current = words[currentWordIndex];
+  const isTenseRule =
+    isTenseAnahtarSlug(selectedModule?.slug) &&
+    isTenseGrammarWord(current?.addedBy);
+  const tenseRule = isTenseRule
+    ? tenseRuleForCategory(current?.category) ||
+      (current?.category
+        ? {
+            formula: '',
+            example: current.english,
+            exampleTr: current.turkish,
+          }
+        : null)
+    : null;
 
   return (
     <div className="app-shell flex flex-col overflow-anchor-none py-4 [overflow-anchor:none]">
@@ -128,11 +155,37 @@ export default function FlashCardsClient() {
         <StudyScopePicker />
       </div>
 
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <OdevPushPrompt />
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-xl font-bold text-on-surface">
-          Kelime Kartları
+          {selectedModule?.slug === IRREGULAR_VERBS_SLUG
+            ? 'Irregular Verbs'
+            : isOdevSlug(selectedModule?.slug)
+              ? 'Ödev Kartları'
+              : 'Kelime Kartları'}
         </h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {isOdevSlug(selectedModule?.slug) && (
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-on-surface-variant">
+              <span>Görseller</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={odevImagesOn}
+                onClick={() => setOdevImagesOn((v) => !v)}
+                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                  odevImagesOn ? 'bg-primary' : 'bg-surface-container-highest'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                    odevImagesOn ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </label>
+          )}
           <Link
             href="/favoriler"
             className="flex items-center gap-1 text-xs font-bold text-secondary"
@@ -175,6 +228,21 @@ export default function FlashCardsClient() {
           wordId={Number(current.id)}
           imageUrl={current.imageUrl}
           moduleSlug={selectedModule?.slug}
+          showCardImage={
+            !isOdevSlug(selectedModule?.slug) || odevImagesOn
+          }
+          pastSimple={
+            selectedModule?.slug === IRREGULAR_VERBS_SLUG
+              ? current.pastSimple
+              : null
+          }
+          pastParticiple={
+            selectedModule?.slug === IRREGULAR_VERBS_SLUG
+              ? current.pastParticiple
+              : null
+          }
+          grammarTitle={tenseRule?.formula || null}
+          grammarRule={null}
           isAuthenticated={!!session}
           isFavorite={favoriteIds.has(Number(current.id))}
           onFavoriteChange={(id, favorited) => {
@@ -187,7 +255,9 @@ export default function FlashCardsClient() {
           }}
           progressLabel={
             mode === 'practice'
-              ? 'Tekrar · Ezberleyemediklerim'
+              ? selectedModule?.slug === IRREGULAR_VERBS_SLUG
+                ? 'Irregular · Ezberleyemediklerim'
+                : 'Tekrar · Ezberleyemediklerim'
               : unlearnedOnly
                 ? `${selectedGroup?.label ?? ''} · Ezberleyemediklerim`
                 : selectedGroup?.label

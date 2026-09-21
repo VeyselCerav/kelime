@@ -272,12 +272,12 @@ export default function AdminModulesPage() {
         <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">{message}</div>
       )}
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-lg bg-error/15 p-3 text-sm text-error">{error}</div>
       )}
 
       <form
         onSubmit={handleCreate}
-        className="mb-10 space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+        className="mb-10 space-y-4 rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
       >
         <h2 className="text-lg font-semibold">Yeni modül ekle</h2>
         <div>
@@ -287,7 +287,7 @@ export default function AdminModulesPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Örn. Akademik Kelimeler"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
+            className="w-full rounded-lg border border-outline-variant px-3 py-2"
           />
         </div>
         <div>
@@ -295,7 +295,7 @@ export default function AdminModulesPage() {
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
+            className="w-full rounded-lg border border-outline-variant px-3 py-2"
           />
         </div>
         <div>
@@ -330,7 +330,7 @@ export default function AdminModulesPage() {
           return (
             <div
               key={m.id}
-              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -348,7 +348,7 @@ export default function AdminModulesPage() {
                   <button
                     type="button"
                     onClick={() => startEdit(m)}
-                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
+                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-surface-container"
                   >
                     Düzenle
                   </button>
@@ -360,7 +360,7 @@ export default function AdminModulesPage() {
                       setAppendJson(null);
                       setAppendLabel('');
                     }}
-                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
+                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-surface-container"
                   >
                     JSON ekle
                   </button>
@@ -368,7 +368,7 @@ export default function AdminModulesPage() {
                     type="button"
                     disabled={isSystem || busyId === m.id}
                     onClick={() => void handleDelete(m)}
-                    className="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-lg border border-error/40 px-3 py-1.5 text-sm text-error hover:bg-error/15 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Sil
                   </button>

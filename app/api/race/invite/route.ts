@@ -23,6 +23,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Modül seçilmeli' }, { status: 400 });
   }
 
+  const sender = await prisma.user.findUnique({
+    where: { id: auth.userId },
+    select: { id: true, isAdmin: true },
+  });
+  const { canAccessModule } = await import('@/lib/module-access');
+  const allowed = await canAccessModule({
+    moduleId,
+    user: sender ? { id: sender.id, isAdmin: sender.isAdmin } : null,
+  });
+  if (!allowed) {
+    return NextResponse.json({ error: 'Bu modüle erişim yok' }, { status: 403 });
+  }
+
   const presence = await prisma.racePresence.findUnique({
     where: { userId: toUserId },
   });

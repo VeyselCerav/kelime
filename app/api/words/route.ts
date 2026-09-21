@@ -5,6 +5,12 @@ import { findWordsForGroup } from '@/lib/module-groups';
 import { weightedShuffle } from '@/lib/study-queue';
 import { filterUnlearnedOrFallback } from '@/lib/unlearned-filter';
 import { authOptions } from '../auth/[...nextauth]/route';
+import {
+  isTenseAnahtarSlug,
+  isTenseGrammarWord,
+} from '@/lib/tense-quiz';
+import { isOdevSlug } from '@/lib/odev';
+import { canAccessModule } from '@/lib/module-access';
 
 export async function GET(request: Request) {
   try {
@@ -16,6 +22,7 @@ export async function GET(request: Request) {
     const unlearnedOnly = searchParams.get('unlearned') === '1';
 
     let resolvedModuleId: number | undefined;
+    let resolvedSlug: string | null = moduleSlug;
 
     if (moduleId) {
       resolvedModuleId = parseInt(moduleId, 10);
@@ -25,6 +32,30 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Modül bulunamadı' }, { status: 404 });
       }
       resolvedModuleId = mod.id;
+      resolvedSlug = mod.slug;
+    }
+
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id ? parseInt(session.user.id, 10) : null;
+    const accessUser = userId
+      ? { id: userId, isAdmin: Boolean(session?.user?.isAdmin) }
+      : null;
+
+    if (resolvedModuleId) {
+      const allowed = await canAccessModule({
+        moduleId: resolvedModuleId,
+        user: accessUser,
+      });
+      if (!allowed) {
+        return NextResponse.json({ error: 'Bu modüle erişim yok' }, { status: 403 });
+      }
+      if (!resolvedSlug) {
+        const mod = await prisma.module.findUnique({
+          where: { id: resolvedModuleId },
+          select: { slug: true },
+        });
+        resolvedSlug = mod?.slug ?? null;
+      }
     }
 
     const where = resolvedModuleId ? { moduleId: resolvedModuleId } : undefined;
@@ -47,9 +78,6 @@ export async function GET(request: Request) {
         },
       });
     }
-
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.id ? parseInt(session.user.id, 10) : null;
 
     if (unlearnedOnly) {
       const filtered = await filterUnlearnedOrFallback(words, userId, true, 1);
@@ -77,7 +105,30 @@ export async function GET(request: Request) {
         ...w,
         isLearned: learnedSet.has(w.id),
       }));
-      const ordered = weightedShuffle(withFlags);
+
+      const slug =
+        resolvedSlug ??
+        (withFlags[0] as { module?: { slug?: string } } | undefined)?.module
+          ?.slug ??
+        null;
+
+      let ordered;
+      if (isOdevSlug(slug)) {
+        ordered = [...withFlags].sort((a, b) => a.id - b.id);
+      } else if (isTenseAnahtarSlug(slug)) {
+        const rules = withFlags.filter((w) =>
+          isTenseGrammarWord((w as { addedBy?: string | null }).addedBy)
+        );
+        const rest = weightedShuffle(
+          withFlags.filter(
+            (w) =>
+              !isTenseGrammarWord((w as { addedBy?: string | null }).addedBy)
+          )
+        );
+        ordered = [...rules, ...rest];
+      } else {
+        ordered = weightedShuffle(withFlags);
+      }
       return NextResponse.json(ordered);
     }
 

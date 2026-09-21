@@ -8,6 +8,10 @@ export interface QuizQuestion {
   options: string[];
   answer: string;
   wordId: number;
+  /** Yanlışta favoriye eklenecek ek kelime id’leri (tense anahtar grubu) */
+  relatedWordIds?: number[];
+  hint?: string | null;
+  explanation?: string | null;
 }
 
 export interface QuizResultSummary {
@@ -22,6 +26,8 @@ interface QuizProps {
   isAuthenticated?: boolean;
   /** Sınav modunda öğrenme kaydı güncellenmez */
   examMode?: boolean;
+  /** Yanlış cevapta wordId (+ relatedWordIds) favoriye eklenir */
+  autoFavoriteWrong?: boolean;
   completedTitle?: string;
   onComplete?: (results: QuizResultSummary) => void;
   hideCompleteScreen?: boolean;
@@ -31,6 +37,7 @@ export default function Quiz({
   questions,
   isAuthenticated,
   examMode = false,
+  autoFavoriteWrong = false,
   completedTitle = 'Quiz Tamamlandı',
   onComplete,
   hideCompleteScreen = false,
@@ -40,6 +47,9 @@ export default function Quiz({
   const [isAnswered, setIsAnswered] = useState(false);
   const [error, setError] = useState('');
   const [quizCompleted, setQuizCompleted] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [favoriting, setFavoriting] = useState(false);
+  const [autoFavoritedCount, setAutoFavoritedCount] = useState(0);
   const [results, setResults] = useState<QuizResultSummary>({
     totalQuestions: questions.length,
     correctAnswers: 0,
@@ -49,6 +59,9 @@ export default function Quiz({
   const savedRef = useRef(false);
 
   const currentQuestion = questions[currentQuestionIndex];
+  const isFavorite = currentQuestion
+    ? favoriteIds.has(currentQuestion.wordId)
+    : false;
   const progressPct =
     ((currentQuestionIndex + (isAnswered ? 1 : 0)) / questions.length) * 100;
 
@@ -58,15 +71,79 @@ export default function Quiz({
     setIsAnswered(false);
     setQuizCompleted(false);
     savedRef.current = false;
+    setAutoFavoritedCount(0);
     setResults({
       totalQuestions: questions.length,
       correctAnswers: 0,
       wrongAnswers: 0,
       score: 0,
     });
-    // Yalnızca soru sayısı değişince sıfırla; aynı yarışta poll referansı değiştirmez
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questions.length, questions[0]?.wordId]);
+  }, [questions.length, questions.map((q) => q.id).join(',')]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setFavoriteIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/favorites', {
+          cache: 'no-store',
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const ids = Array.isArray(data.wordIds)
+          ? data.wordIds.map((id: unknown) => Number(id))
+          : [];
+        setFavoriteIds(new Set(ids.filter((id: number) => !Number.isNaN(id))));
+      } catch {
+        /* sessiz */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, questions.length, questions[0]?.wordId]);
+
+  const toggleFavorite = async () => {
+    if (!currentQuestion) return;
+    if (!isAuthenticated) {
+      setError('Favori için oturum açmanız gerekiyor');
+      return;
+    }
+    if (favoriting) return;
+    if (!currentQuestion.wordId) return;
+    setFavoriting(true);
+    setError('');
+    const wordId = currentQuestion.wordId;
+    const next = !favoriteIds.has(wordId);
+    try {
+      const res = await fetch('/api/favorites', {
+        method: next ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wordId }),
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Favori güncellenemedi');
+      }
+      setFavoriteIds((prev) => {
+        const copy = new Set(prev);
+        if (next) copy.add(wordId);
+        else copy.delete(wordId);
+        return copy;
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Hata oluştu');
+    } finally {
+      setFavoriting(false);
+    }
+  };
 
   const handleAnswerSelect = async (answer: string) => {
     if (isAnswered) return;
@@ -81,7 +158,40 @@ export default function Quiz({
       score: isCorrect ? prev.score + 100 / questions.length : prev.score,
     }));
 
-    if (!isAuthenticated || examMode) return;
+    if (!isAuthenticated) return;
+
+    if (!isCorrect && autoFavoriteWrong) {
+      const ids = [
+        ...(currentQuestion.relatedWordIds?.length
+          ? currentQuestion.relatedWordIds
+          : currentQuestion.wordId
+            ? [currentQuestion.wordId]
+            : []),
+      ]
+        .filter((id) => id > 0)
+        .slice(0, 5);
+      // Sonraki soruyu kilitlemesin diye arka planda ekle
+      void Promise.all(
+        ids.map(async (wordId) => {
+          try {
+            const res = await fetch('/api/favorites', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ wordId }),
+              credentials: 'include',
+            });
+            if (res.ok) {
+              setFavoriteIds((prev) => new Set(prev).add(wordId));
+              setAutoFavoritedCount((n) => n + 1);
+            }
+          } catch {
+            /* sessiz */
+          }
+        })
+      );
+    }
+
+    if (examMode || autoFavoriteWrong) return;
 
     try {
       await fetch('/api/learned-words', {
@@ -122,6 +232,7 @@ export default function Quiz({
 
   const handleRestartQuiz = () => {
     savedRef.current = false;
+    setAutoFavoritedCount(0);
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswered(false);
@@ -154,6 +265,11 @@ export default function Quiz({
           {results.correctAnswers}/{results.totalQuestions} doğru ·{' '}
           {Math.round(results.score)}%
         </p>
+        {autoFavoritedCount > 0 && (
+          <p className="text-sm text-secondary">
+            {autoFavoritedCount} anahtar kelime favorilere eklendi.
+          </p>
+        )}
         <div className="flex flex-col gap-2">
           {!examMode && (
             <button
@@ -196,28 +312,69 @@ export default function Quiz({
       </div>
 
       <p className="mb-4 text-center text-sm italic text-secondary">
-        {examMode ? 'Yarış — hızlı ve doğru ol!' : 'Harika gidiyorsun, devam et!'}
+        {examMode
+          ? 'Yarış — hızlı ve doğru ol!'
+          : autoFavoriteWrong
+            ? 'Anahtar kelimeye göre doğru tense’i seç'
+            : 'Harika gidiyorsun, devam et!'}
       </p>
 
-      <section className="paper-stack relative mb-6 rounded-[32px] border border-outline-variant bg-white p-6 shadow-sm">
+      <section className="paper-stack paper-texture relative mb-6 rounded-[32px] border border-outline-variant/60 p-6 shadow-soft">
         <div className="mb-3 flex items-start justify-between">
           <span className="rounded-full bg-tertiary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-tertiary">
-            {examMode ? 'Yarış' : 'Anlam'}
+            {examMode ? 'Yarış' : autoFavoriteWrong ? 'Tense' : 'Anlam'}
           </span>
-          <span className="material-symbols-outlined text-outline-variant">
-            {examMode ? 'assignment' : 'auto_stories'}
-          </span>
+          {currentQuestion?.wordId > 0 && (
+            <button
+              type="button"
+              disabled={favoriting || !currentQuestion}
+              aria-label={isFavorite ? 'Favoriden çıkar' : 'Favoriye ekle'}
+              onClick={() => void toggleFavorite()}
+              className={`btn-tactile -mr-1 -mt-1 flex h-10 w-10 items-center justify-center rounded-full disabled:opacity-50 ${
+                isFavorite ? 'text-secondary' : 'text-on-surface-variant'
+              }`}
+            >
+              <span
+                className="material-symbols-outlined text-[28px]"
+                style={
+                  isFavorite ? { fontVariationSettings: "'FILL' 1" } : undefined
+                }
+              >
+                star
+              </span>
+            </button>
+          )}
         </div>
         <h2 className="mb-2 font-display text-[22px] font-bold leading-tight text-on-surface sm:text-[28px]">
           {currentQuestion.question}
         </h2>
+        {isAnswered &&
+          (currentQuestion.hint || currentQuestion.explanation) && (
+            <div className="mt-4 space-y-1 rounded-[16px] bg-surface-container-low p-3 text-sm text-on-surface-variant">
+              {currentQuestion.hint && (
+                <p>
+                  <span className="font-semibold text-on-surface">İpucu: </span>
+                  {currentQuestion.hint}
+                </p>
+              )}
+              {currentQuestion.explanation && (
+                <p>
+                  <span className="font-semibold text-on-surface">
+                    Açıklama:{' '}
+                  </span>
+                  {currentQuestion.explanation}
+                </p>
+              )}
+            </div>
+          )}
       </section>
 
       <div className="grid grid-cols-1 gap-3">
         {currentQuestion.options.map((option) => {
           const selected = selectedAnswer === option;
           const correct = isAnswered && option === currentQuestion.answer;
-          const wrong = isAnswered && selected && option !== currentQuestion.answer;
+          const wrong =
+            isAnswered && selected && option !== currentQuestion.answer;
           return (
             <button
               key={option}
@@ -235,7 +392,9 @@ export default function Quiz({
             >
               <span
                 className={`text-lg ${
-                  correct || selected ? 'font-medium text-primary' : 'text-on-surface'
+                  correct || selected
+                    ? 'font-medium text-primary'
+                    : 'text-on-surface'
                 }`}
               >
                 {option}

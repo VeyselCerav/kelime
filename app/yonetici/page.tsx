@@ -65,7 +65,7 @@ export default function AdminPage() {
         <button
           type="button"
           onClick={handleSignOut}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-error/40 bg-error/15 px-4 py-2 text-sm font-semibold text-error hover:bg-error/20"
         >
           Çıkış Yap
         </button>
@@ -73,14 +73,14 @@ export default function AdminPage() {
       
       {message && (
         <div className={`mb-4 p-4 rounded ${
-          message.startsWith('Hata') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+          message.startsWith('Hata') ? 'bg-error/20 text-error' : 'bg-primary-container/30 text-primary'
         }`}>
           {message}
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="bg-surface-container-lowest p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-4">Kelime Yönetimi</h2>
           <div className="space-y-4">
             <button
@@ -108,7 +108,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="bg-surface-container-lowest p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-4">Kullanıcı Yönetimi</h2>
           <div className="space-y-4">
             <button
@@ -117,6 +117,14 @@ export default function AdminPage() {
               className="w-full bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition disabled:opacity-50"
             >
               Kullanıcıları Listele
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/yonetici/odev-yetki')}
+              disabled={isLoading}
+              className="w-full bg-teal-600 text-white px-4 py-2 rounded hover:bg-teal-700 transition disabled:opacity-50"
+            >
+              Ödev Modülü Yetkisi
             </button>
             <button
               onClick={handleViewStats}

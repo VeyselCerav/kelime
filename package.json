@@ -12,6 +12,12 @@
     "migrate-modules": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/migrate-modules.ts",
     "import-tense": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/import-tense.ts",
     "import-level": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/import-level.ts",
+    "import-irregular-verbs": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/import-irregular-verbs.ts",
+    "copy-irregular-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/copy-irregular-images.ts",
+    "import-phrasal-verbs": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/import-phrasal-verbs.ts",
+    "copy-phrasal-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/copy-phrasal-images.ts",
+    "import-odev": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/import-odev.ts",
+    "copy-odev-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/copy-odev-images.ts",
     "generate-word-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/generate-word-images.ts",
     "generate-ensik-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/generate-ensik-images.ts",
     "generate-ensik-images-comfy": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/generate-ensik-images-comfy.ts",
@@ -27,10 +33,13 @@
     "apply-seviye-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/apply-seviye-images.ts",
     "apply-module-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/apply-module-images.ts",
     "resize-ensik-card-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/resize-ensik-card-images.ts",
+    "reprocess-ensik-contain": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/reprocess-ensik-contain.ts",
+    "reprocess-grids-gutter": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/reprocess-grids-gutter.ts",
     "export-image-words": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/export-image-words.ts",
     "apply-word-images": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/apply-word-images.ts",
     "upload-word-images-blob": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/upload-word-images-blob.ts",
-    "upload-word-images-r2": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/upload-word-images-r2.ts"
+    "upload-word-images-r2": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/upload-word-images-r2.ts",
+    "send-promo-email": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node scripts/send-promo-email.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -54,7 +63,8 @@
     "nodemailer": "^6.10.1",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -62,6 +72,7 @@
     "@types/node": "^20.17.47",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.0.4",

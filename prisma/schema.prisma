@@ -27,35 +27,57 @@ model User {
   raceInvitesSent   RaceInvite[]  @relation("RaceInvitesSent")
   raceInvitesRecv   RaceInvite[]  @relation("RaceInvitesReceived")
   raceResults       RaceResult[]
+  moduleAccess      ModuleAccess[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Module {
-  id          Int     @id @default(autoincrement())
-  slug        String  @unique
-  name        String
-  description String?
-  sortOrder   Int     @default(0)
-  words       Word[]
+  id           Int            @id @default(autoincrement())
+  slug         String         @unique
+  name         String
+  description  String?
+  sortOrder    Int            @default(0)
+  /** true ise sadece admin + ModuleAccess verilen kullanıcılar görür */
+  isRestricted Boolean        @default(false)
+  words        Word[]
+  access       ModuleAccess[]
+}
+
+/** Kısıtlı modüle (ör. Ödev) kullanıcı yetkisi */
+model ModuleAccess {
+  id        Int      @id @default(autoincrement())
+  moduleId  Int
+  userId    Int
+  createdAt DateTime @default(now())
+  module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, userId])
+  @@index([userId])
 }
 
 model Word {
-  id          Int             @id @default(autoincrement())
-  english     String
-  turkish     String
-  category    String?
-  moduleId    Int
-  module      Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  addedBy     String
+  id             Int             @id @default(autoincrement())
+  english        String
+  turkish        String
+  category       String?
+  /** Düzensiz fiil: past simple (V2), örn. went / was/were */
+  pastSimple     String?
+  /** Düzensiz fiil: past participle (V3), örn. gone */
+  pastParticiple String?
+  moduleId       Int
+  module         Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  addedBy        String
   /** Kart arka plan görseli — örn. /word-images/12.jpg */
-  imageUrl    String?
+  imageUrl       String?
   /** Gemini’ye verilen görsel promptu (yeniden üretim için) */
-  imagePrompt String?
-  createdAt   DateTime        @default(now())
-  learnedBy   LearnedWord[]
-  unlearnedBy UnlearnedWord[]
-  favoritedBy FavoriteWord[]
+  imagePrompt    String?
+  createdAt      DateTime        @default(now())
+  learnedBy      LearnedWord[]
+  unlearnedBy    UnlearnedWord[]
+  favoritedBy    FavoriteWord[]
 
-  @@unique([moduleId, english])
+  @@index([moduleId, english])
   @@index([moduleId, category])
 }
 
@@ -178,4 +200,19 @@ model RaceResult {
 
   @@unique([matchId, userId])
   @@index([userId, createdAt])
+}
+
+/** Ödev Web Push aboneliği (PWA kısayol + bildirim izni) */
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
