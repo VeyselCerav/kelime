@@ -1,0 +1,31 @@
+name: Ödev saatlik push
+
+on:
+  schedule:
+    # Her saat başı UTC — route Europe/Istanbul 08–22 filtresi uygular
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  odev-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Ödev reminder cron
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET secret eksik"
+            exit 1
+          fi
+          BASE="${APP_URL:-https://haftalik-kelime.vercel.app}"
+          BASE="${BASE%/}"
+          code=$(curl -sS -o /tmp/cron-out.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            "$BASE/api/cron/odev-reminders")
+          echo "HTTP $code"
+          cat /tmp/cron-out.json || true
+          test "$code" = "200"
