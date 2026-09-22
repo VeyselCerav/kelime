@@ -10,6 +10,7 @@ import {
   isTenseGrammarWord,
 } from '@/lib/tense-quiz';
 import { isOdevSlug } from '@/lib/odev';
+import { prioritizeOdevWords } from '@/lib/odev-coach';
 import { canAccessModule } from '@/lib/module-access';
 
 export async function GET(request: Request) {
@@ -115,6 +116,18 @@ export async function GET(request: Request) {
       let ordered;
       if (isOdevSlug(slug)) {
         ordered = [...withFlags].sort((a, b) => a.id - b.id);
+        if (userId && ordered.length) {
+          const states = await prisma.odevWordState.findMany({
+            where: {
+              userId,
+              wordId: { in: ordered.map((w) => w.id) },
+            },
+            select: { wordId: true, dueAt: true, difficultyScore: true },
+          });
+          if (states.length) {
+            ordered = prioritizeOdevWords(ordered, states);
+          }
+        }
       } else if (isTenseAnahtarSlug(slug)) {
         const rules = withFlags.filter((w) =>
           isTenseGrammarWord((w as { addedBy?: string | null }).addedBy)

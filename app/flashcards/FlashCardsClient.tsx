@@ -167,6 +167,17 @@ export default function FlashCardsClient() {
         </h1>
         <div className="flex flex-wrap items-center gap-3">
           {isOdevSlug(selectedModule?.slug) && (
+            <Link
+              href="/odev-antrenman"
+              className="flex items-center gap-1 rounded-full bg-secondary/15 px-3 py-1.5 text-xs font-bold text-secondary"
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                fitness_center
+              </span>
+              Antrenman
+            </Link>
+          )}
+          {isOdevSlug(selectedModule?.slug) && (
             <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-on-surface-variant">
               <span>Görseller</span>
               <button

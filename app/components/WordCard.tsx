@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/scroll-lock';
 import { resolveWordImageUrl, WORD_CARD_IMAGE_HEIGHT, WORD_CARD_IMAGE_WIDTH } from '@/lib/word-image-url';
+import { isOdevSlug } from '@/lib/odev';
+import { trackOdevEvent } from '@/lib/odev-track';
 
 /** Ekran genişliğinin ~%22’si; min 72 / max 140 */
 function swipeThreshold(): number {
@@ -111,6 +113,9 @@ export default function WordCard({
   const onActionCompleteRef = useRef(onActionComplete);
   const onProgressSavedRef = useRef(onProgressSaved);
   const scrollLockedRef = useRef(false);
+  const shownAtRef = useRef(Date.now());
+  const everFlippedRef = useRef(false);
+  const trackOdev = isOdevSlug(moduleSlug);
 
   const releaseScrollLock = () => {
     if (!scrollLockedRef.current) return;
@@ -157,13 +162,24 @@ export default function WordCard({
     draggingRef.current = false;
     pointerIdRef.current = null;
     exitDirRef.current = null;
+    shownAtRef.current = Date.now();
+    everFlippedRef.current = false;
+    if (trackOdev && wordId) {
+      trackOdevEvent({ wordId, type: 'card_show' });
+    }
     releaseScrollLock();
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
     // releaseScrollLock kasıtlı: word değişince kilidi aç
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wordId, isFavorite]);
+  }, [wordId, isFavorite, trackOdev]);
+
+  useEffect(() => {
+    if (!trackOdev || !isFlipped || everFlippedRef.current) return;
+    everFlippedRef.current = true;
+    trackOdevEvent({ wordId, type: 'flip' });
+  }, [isFlipped, trackOdev, wordId]);
 
   useEffect(() => {
     return () => {
@@ -250,6 +266,14 @@ export default function WordCard({
         body: JSON.stringify({ wordId: id }),
         credentials: 'include',
       });
+      if (trackOdev) {
+        trackOdevEvent({
+          wordId: id,
+          type: 'unlearn',
+          durationMs: Date.now() - shownAtRef.current,
+          flipped: everFlippedRef.current,
+        });
+      }
       onActionCompleteRef.current?.();
       onProgressSavedRef.current?.();
     } catch (e) {
@@ -279,6 +303,14 @@ export default function WordCard({
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Hata');
+      }
+      if (trackOdev) {
+        trackOdevEvent({
+          wordId: id,
+          type: 'learn',
+          durationMs: Date.now() - shownAtRef.current,
+          flipped: everFlippedRef.current,
+        });
       }
       onActionCompleteRef.current?.();
       onProgressSavedRef.current?.();

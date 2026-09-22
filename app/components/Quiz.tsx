@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sanitizeQuizOptions } from '@/lib/quiz-options';
+import { trackOdevEvent } from '@/lib/odev-track';
 
 export interface QuizQuestion {
   id: number;
@@ -29,6 +30,8 @@ interface QuizProps {
   examMode?: boolean;
   /** Yanlış cevapta wordId (+ relatedWordIds) favoriye eklenir */
   autoFavoriteWrong?: boolean;
+  /** Ödev antrenman telemetry */
+  trackOdev?: boolean;
   completedTitle?: string;
   onComplete?: (results: QuizResultSummary) => void;
   hideCompleteScreen?: boolean;
@@ -39,6 +42,7 @@ export default function Quiz({
   isAuthenticated,
   examMode = false,
   autoFavoriteWrong = false,
+  trackOdev = false,
   completedTitle = 'Quiz Tamamlandı',
   onComplete,
   hideCompleteScreen = false,
@@ -58,6 +62,7 @@ export default function Quiz({
     score: 0,
   });
   const savedRef = useRef(false);
+  const questionShownAtRef = useRef(Date.now());
 
   const currentQuestion = questions[currentQuestionIndex];
   const displayOptions = useMemo(
@@ -88,6 +93,10 @@ export default function Quiz({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions.length, questions.map((q) => q.id).join(',')]);
+
+  useEffect(() => {
+    questionShownAtRef.current = Date.now();
+  }, [currentQuestionIndex, currentQuestion?.id]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -200,6 +209,14 @@ export default function Quiz({
     }
 
     if (examMode || autoFavoriteWrong) return;
+
+    if (trackOdev && currentQuestion.wordId) {
+      trackOdevEvent({
+        wordId: currentQuestion.wordId,
+        type: isCorrect ? 'quiz_ok' : 'quiz_fail',
+        durationMs: Date.now() - questionShownAtRef.current,
+      });
+    }
 
     try {
       await fetch('/api/learned-words', {

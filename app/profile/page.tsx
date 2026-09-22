@@ -15,6 +15,7 @@ import {
   Legend
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import OdevPushSettings from '../components/OdevPushSettings';
 
 ChartJS.register(
   CategoryScale,
@@ -150,6 +151,8 @@ export default function ProfilePage() {
         Favorilerim
       </Link>
 
+      <OdevPushSettings variant="full" />
+
       {rank && (
         <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="rounded-card border border-primary/15 bg-primary-container/15 p-5">
@@ -182,52 +185,62 @@ export default function ProfilePage() {
 
       {/* İlerleme Kartları */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-primary/10">
-          <h2 className="text-xl font-semibold mb-2 text-base-content">Toplam İlerleme</h2>
+        <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low p-6 shadow-organic">
+          <h2 className="mb-2 text-xl font-semibold text-on-surface">Toplam İlerleme</h2>
           <p className="text-4xl font-bold text-primary">
             {progress?.totalWords || 0}
           </p>
-          <p className="text-base-content/70">öğrenilen kelime</p>
+          <p className="text-on-surface-variant">öğrenilen kelime</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-primary/10">
-          <h2 className="text-xl font-semibold mb-2 text-base-content">Çalışma Serisi</h2>
+        <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low p-6 shadow-organic">
+          <h2 className="mb-2 text-xl font-semibold text-on-surface">Çalışma Serisi</h2>
           <p className="text-4xl font-bold text-secondary">
             {progress?.streak || 0}
           </p>
-          <p className="text-base-content/70">gün</p>
+          <p className="text-on-surface-variant">gün</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-primary/10">
-          <h2 className="text-xl font-semibold mb-2 text-base-content">Rozetler</h2>
+        <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low p-6 shadow-organic">
+          <h2 className="mb-2 text-xl font-semibold text-on-surface">Rozetler</h2>
           <p className="text-4xl font-bold text-primary">
             {progress?.badges?.filter(b => b.achieved).length || 0}
           </p>
-          <p className="text-base-content/70">kazanılan rozet</p>
+          <p className="text-on-surface-variant">kazanılan rozet</p>
         </div>
       </div>
 
       {/* Haftalık İlerleme Grafiği */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-12 border-2 border-primary/10">
-        <h2 className="text-xl font-semibold mb-4">Haftalık İlerleme</h2>
+      <div className="mb-12 rounded-xl border border-outline-variant/50 bg-surface-container-low p-6 shadow-organic">
+        <h2 className="mb-4 text-xl font-semibold text-on-surface">Haftalık İlerleme</h2>
         <div className="h-64">
           <Line data={chartData} options={{ 
             maintainAspectRatio: false,
+            color: '#a8a49a',
             scales: {
+              x: {
+                ticks: { color: '#a8a49a' },
+                grid: { color: 'rgba(42, 51, 44, 0.8)' },
+              },
               y: {
                 beginAtZero: true,
                 ticks: {
-                  stepSize: 1
-                }
+                  stepSize: 1,
+                  color: '#a8a49a',
+                },
+                grid: { color: 'rgba(42, 51, 44, 0.8)' },
               }
-            }
+            },
+            plugins: {
+              legend: { labels: { color: '#f5f0e8' } },
+            },
           }} />
         </div>
       </div>
 
       {/* Rozetler */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-primary/10">
-        <h2 className="text-2xl font-semibold mb-6 text-base-content">Rozetlerim</h2>
+      <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low p-6 shadow-organic">
+        <h2 className="mb-6 text-2xl font-semibold text-on-surface">Rozetlerim</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {progress?.badges?.map((badge, index) => (
             <div
@@ -235,18 +248,18 @@ export default function ProfilePage() {
               className={`p-6 rounded-xl border-2 ${
                 badge.achieved
                   ? 'bg-primary/5 border-primary/20'
-                  : 'bg-gray-50 border-gray-200'
+                  : 'bg-surface-container border-outline-variant'
               }`}
             >
               <div className="flex items-center gap-4">
-                <div className={`text-2xl ${badge.achieved ? 'text-primary' : 'text-gray-400'}`}>
+                <div className={`text-2xl ${badge.achieved ? 'text-primary' : 'text-on-surface-variant'}`}>
                   🏆
                 </div>
                 <div>
-                  <h3 className={`font-semibold ${badge.achieved ? 'text-primary' : 'text-gray-400'}`}>
+                  <h3 className={`font-semibold ${badge.achieved ? 'text-primary' : 'text-on-surface-variant'}`}>
                     {badge.name}
                   </h3>
-                  <p className={`text-sm ${badge.achieved ? 'text-base-content/70' : 'text-gray-400'}`}>
+                  <p className={`text-sm ${badge.achieved ? 'text-on-surface-variant' : 'text-on-surface-variant/70'}`}>
                     {badge.description}
                   </p>
                 </div>

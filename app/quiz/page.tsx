@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Quiz from '../components/Quiz';
@@ -248,14 +249,24 @@ export default function QuizPage() {
         </div>
       )}
 
-      <h1 className="mb-2 font-display text-xl font-bold text-on-surface">
-        {practiceTitle ||
-          (isIrregular
-            ? 'Irregular Verbs · Yazmalı'
-            : isTense
-              ? 'Tense Quiz'
-              : 'Quiz')}
-      </h1>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="font-display text-xl font-bold text-on-surface">
+          {practiceTitle ||
+            (isIrregular
+              ? 'Irregular Verbs · Yazmalı'
+              : isTense
+                ? 'Tense Quiz'
+                : 'Quiz')}
+        </h1>
+        {isOdevSlug(selectedModule?.slug) && (
+          <Link
+            href="/odev-antrenman"
+            className="rounded-full bg-secondary/15 px-3 py-1.5 text-xs font-bold text-secondary"
+          >
+            Antrenman
+          </Link>
+        )}
+      </div>
       {mode !== 'practice' && !isTense && selectedGroup && (
         <p className="mb-6 text-sm text-on-surface-variant">
           {selectedGroup.label}
@@ -326,7 +337,11 @@ export default function QuizPage() {
           Bu grup için yeterli soru yok.
         </p>
       ) : (
-        <Quiz questions={questions} isAuthenticated={!!session} />
+        <Quiz
+          questions={questions}
+          isAuthenticated={!!session}
+          trackOdev={isOdevSlug(selectedModule?.slug)}
+        />
       )}
     </div>
   );

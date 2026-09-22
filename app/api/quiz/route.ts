@@ -8,6 +8,7 @@ import { filterUnlearnedOrFallback } from '@/lib/unlearned-filter';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { IRREGULAR_VERBS_SLUG } from '@/lib/irregular-verbs';
 import { isOdevSlug } from '@/lib/odev';
+import { prioritizeOdevWords } from '@/lib/odev-coach';
 import { canAccessModule } from '@/lib/module-access';
 import { buildUniqueOptions } from '@/lib/quiz-options';
 
@@ -105,6 +106,19 @@ export async function GET(request: Request) {
     words = preserveOrder
       ? [...withFlags].sort((a, b) => a.id - b.id)
       : weightedShuffle(withFlags);
+
+    if (preserveOrder && userId && words.length) {
+      const states = await prisma.odevWordState.findMany({
+        where: {
+          userId,
+          wordId: { in: words.map((w) => w.id) },
+        },
+        select: { wordId: true, dueAt: true, difficultyScore: true },
+      });
+      if (states.length) {
+        words = prioritizeOdevWords(words, states);
+      }
+    }
 
     const distractorPool =
       moduleId && words.length < 8

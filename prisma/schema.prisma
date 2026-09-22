@@ -29,6 +29,8 @@ model User {
   raceResults       RaceResult[]
   moduleAccess      ModuleAccess[]
   pushSubscriptions PushSubscription[]
+  odevWordEvents    OdevWordEvent[]
+  odevWordStates    OdevWordState[]
 }
 
 model Module {
@@ -76,6 +78,8 @@ model Word {
   learnedBy      LearnedWord[]
   unlearnedBy    UnlearnedWord[]
   favoritedBy    FavoriteWord[]
+  odevEvents     OdevWordEvent[]
+  odevStates     OdevWordState[]
 
   @@index([moduleId, english])
   @@index([moduleId, category])
@@ -215,4 +219,49 @@ model PushSubscription {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/** Ödev antrenman — ham etkileşim (quiz / kart) */
+model OdevWordEvent {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  wordId     Int
+  /** quiz_ok | quiz_fail | card_show | flip | learn | unlearn */
+  type       String
+  durationMs Int?
+  flipped    Boolean?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word       Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, wordId, createdAt])
+  @@index([wordId])
+}
+
+/**
+ * Ödev antrenman — kelime durumu
+ * box: 0=bugün, 1=+1g, 2=+3g, 3=+7g
+ */
+model OdevWordState {
+  id               Int      @id @default(autoincrement())
+  userId           Int
+  wordId           Int
+  difficultyScore  Float    @default(0)
+  box              Int      @default(0)
+  dueAt            DateTime @default(now())
+  wrongStreak      Int      @default(0)
+  quizWrong        Int      @default(0)
+  quizCorrect      Int      @default(0)
+  fastLearnCount   Int      @default(0)
+  slowUnlearnCount Int      @default(0)
+  lastEventAt      DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word             Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+  @@index([userId, dueAt])
+  @@index([userId, difficultyScore])
 }
