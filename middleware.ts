@@ -11,7 +11,13 @@ const publicExact = new Set([
   '/manifest.json',
   '/robots.txt',
 ]);
-const publicPrefixes = ['/auth', '/api/auth', '/api/promo/click', '/api/cron'];
+const publicPrefixes = [
+  '/auth',
+  '/api/auth',
+  '/api/promo/click',
+  '/api/cron',
+  '/api/push/vapid-public-key',
+];
 
 const adminPrefixes = [
   '/yonetici',

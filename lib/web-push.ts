@@ -130,6 +130,18 @@ export async function sendOdevReminderToUserIds(userIds: number[]): Promise<{
   gone: number;
   errors: number;
 }> {
+  return sendPushPayloadToUserIds(userIds, {
+    title: ODEV_PUSH_TITLE,
+    body: ODEV_PUSH_BODY,
+    url: ODEV_PUSH_URL,
+    tag: 'odev-reminder',
+  });
+}
+
+export async function sendPushPayloadToUserIds(
+  userIds: number[],
+  payload: PushPayload
+): Promise<{ sent: number; gone: number; errors: number }> {
   if (!ensureWebPushConfigured() || userIds.length === 0) {
     return { sent: 0, gone: 0, errors: 0 };
   }
@@ -137,13 +149,6 @@ export async function sendOdevReminderToUserIds(userIds: number[]): Promise<{
   const subs = await prisma.pushSubscription.findMany({
     where: { userId: { in: userIds } },
   });
-
-  const payload: PushPayload = {
-    title: ODEV_PUSH_TITLE,
-    body: ODEV_PUSH_BODY,
-    url: ODEV_PUSH_URL,
-    tag: 'odev-reminder',
-  };
 
   let sent = 0;
   let gone = 0;
@@ -166,4 +171,11 @@ export async function sendOdevReminderToUserIds(userIds: number[]): Promise<{
   }
 
   return { sent, gone, errors };
+}
+
+export async function sendPushToUserId(
+  userId: number,
+  payload: PushPayload
+): Promise<{ sent: number; gone: number; errors: number }> {
+  return sendPushPayloadToUserIds([userId], payload);
 }
